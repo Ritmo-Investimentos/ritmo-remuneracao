@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ritmo Investimentos | Gestão de Remuneração</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Firebase SDK -->
+<script type="module" src="firebase-init.js"></script>
+<!-- Estilos Externos -->
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="ritmo-pontos">
+      <circle class="ponto" cx="50" cy="10" r="4"/>
+      <circle class="ponto" cx="72" cy="16" r="4.5" opacity="0.9"/>
+      <circle class="ponto" cx="86" cy="34" r="5" opacity="0.85"/>
+      <circle class="ponto" cx="90" cy="50" r="4" opacity="0.8"/>
+      <circle class="ponto" cx="86" cy="66" r="5" opacity="0.85"/>
+      <circle class="ponto" cx="72" cy="84" r="4.5" opacity="0.9"/>
+      <circle class="ponto" cx="50" cy="90" r="4"/>
+      <circle class="ponto" cx="28" cy="84" r="4.5" opacity="0.9"/>
+      <circle class="ponto" cx="14" cy="66" r="5" opacity="0.85"/>
+      <circle class="ponto" cx="10" cy="50" r="4" opacity="0.8"/>
+      <circle class="ponto" cx="14" cy="34" r="5" opacity="0.85"/>
+      <circle class="ponto" cx="28" cy="16" r="4.5" opacity="0.9"/>
+      <circle cx="50" cy="50" r="16" fill="#7c3aed"/>
+      <circle cx="50" cy="50" r="16" fill="none" stroke="#5b21b6" stroke-width="2"/>
+    </g>
+  </defs>
+</svg>
+
+<div id="tela-login">
+  <div class="login-card">
+    <div class="marca">
+      <svg viewBox="0 0 100 100" class="logo-ritmo"><use href="#ritmo-pontos"/></svg>
+      <span class="subtitulo-marca">Ritmo Investimentos</span>
+      <h1>Gestão de Remuneração</h1>
+    </div>
+    <p class="instrucao">Entre com seu usuário e senha</p>
+    <input type="text" id="input-login" placeholder="Usuário">
+    <input type="password" id="input-senha" placeholder="Senha">
+    <button onclick="fazerLogin()">Entrar</button>
+    <p class="erro" id="erro-login"></p>
+  </div>
+</div>
+
+<div id="app-shell">
+  <aside class="sidebar">
+    <div class="marca-sidebar">
+      <svg viewBox="0 0 100 100" class="logo-ritmo"><use href="#ritmo-pontos"/></svg>
+      <h2>Ritmo Investimentos</h2>
+      <span>Remuneração</span>
+    </div>
+    <nav id="menu-lateral"></nav>
+    <div class="usuario-logado">
+      <p id="texto-usuario-logado"></p>
+      <button onclick="fazerLogout()">Sair</button>
+    </div>
+  </aside>
+
+  <main class="conteudo">
+
+    <section id="view-painel" class="view">
+      <div class="topbar"><h1>👥 Remuneração</h1></div>
+      <div class="card">
+        <div class="form-row">
+          <div><label>Filtrar por mês</label><input type="month" id="filtro-mes-painel" onchange="renderizarPainel()"></div>
+          <div style="align-self:flex-end;"><button class="secondary" onclick="limparFiltroMesPainel()">Ver todos os períodos</button></div>
+        </div>
+      </div>
+      <div id="lista-funcionarios-painel"></div>
+      <div class="total-geral" id="total-geral-painel"></div>
+    </section>
+
+    <section id="view-lancar" class="view">
+      <div class="topbar"><h1>📝 Lançar Repasse</h1></div>
+      <div class="card">
+        <h2>Venda / Produto</h2>
+        <div class="form-row">
+          <div><label>Assessor</label><select id="select-funcionario"></select></div>
+          <div><label>Produto</label><select id="select-produto" onchange="alterarProdutoSelecionado('lancar')"></select></div>
+          <div><label>Mês de referência</label><input type="month" id="input-competencia"></div>
+        </div>
+        <div id="campos-padrao" class="form-row">
+          <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor" placeholder="0,00"></div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-variavel" placeholder="0,00"></div>
+        </div>
+        <div id="campos-seguro" class="form-row" style="display:none;">
+          <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio" placeholder="0,00"></div>
+          <div><label>Seguradora</label>
+            <select id="select-seguradora" onchange="alterarSeguradoraSelecionada('lancar')">
+              <option value="Azos">Azos</option>
+              <option value="Bradesco">Bradesco</option>
+              <option value="Genial">Genial</option>
+              <option value="Icatu">Icatu</option>
+              <option value="MAG">MAG</option>
+              <option value="MetLife">MetLife</option>
+              <option value="Porto">Porto</option>
+            </select>
+          </div>
+          <div id="campo-pj2" style="display:none;">
+            <label>Mesa PJ2 participou desta venda?</label>
+            <select id="select-pj2-participou">
+              <option value="nao">Não</option>
+              <option value="sim">Sim</option>
+            </select>
+          </div>
+        </div>
+        <div id="campos-consorcio" class="form-row" style="display:none;">
+          <div><label>Valor do Consórcio (R$)</label><input type="text" class="input-moeda" id="input-valor-consorcio" placeholder="0,00"></div>
+          <div><label>Administradora</label>
+            <select id="select-administradora-consorcio">
+              <option value="HS">HS</option>
+              <option value="Ademicon">Ademicon</option>
+              <option value="Embracon">Embracon</option>
+            </select>
+          </div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-consorcio" placeholder="0,00"></div>
+        </div>
+        <div id="campos-renda-variavel" class="form-row" style="display:none;">
+          <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor-rv" placeholder="0,00"></div>
+          <div><label>Tipo de Renda Variável</label>
+            <select id="select-tipo-rv">
+              <option value="Ações">Ações</option>
+              <option value="Opções">Opções</option>
+            </select>
+          </div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-rv" placeholder="0,00"></div>
+        </div>
+        <div id="campos-plano-saude" class="form-row" style="display:none;">
+          <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio-ps" placeholder="0,00"></div>
+          <div><label>Empresa</label>
+            <select id="select-empresa-ps">
+              <option value="Sul América">Sul América</option>
+              <option value="Porto">Porto</option>
+              <option value="Bradesco">Bradesco</option>
+              <option value="HapVida">HapVida</option>
+            </select>
+          </div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps" placeholder="0,00"></div>
+        </div>
+        <div class="form-row"><button onclick="lancarVenda()">Adicionar Venda</button></div>
+      </div>
+
+      <div class="card">
+        <h2>🚌 Reembolso de Passagem</h2>
+        <p class="status">Todos os colaboradores (assessores e SDRs) podem receber passagem. O valor é somado ao repasse do mês.</p>
+        <div class="form-row">
+          <div><label>Colaborador</label><select id="select-colaborador-passagem"></select></div>
+          <div><label>Mês de referência</label><input type="month" id="input-competencia-passagem"></div>
+          <div><label>Tipo</label>
+            <select id="select-tipo-passagem" onchange="atualizarValorPassagemLabel()">
+              <option value="metro">Metrô (R$ <span id="valor-unit-metro-label">7,90</span> cada)</option>
+              <option value="onibus">Ônibus (R$ <span id="valor-unit-onibus-label">5,00</span> cada)</option>
+            </select>
+          </div>
+          <div><label>Quantidade de passagens</label><input type="number" id="input-qtd-passagem" min="1" step="1" value="1"></div>
+          <div style="align-self:flex-end;"><button onclick="lancarPassagem()">Adicionar Passagem</button></div>
+        </div>
+        <div id="area-config-passagem-admin" style="margin-top:14px; display:none;">
+          <button class="link-discreto" onclick="alternarConfigPassagem()" id="botao-alternar-config-passagem">Ajustar valores da passagem</button>
+          <div class="form-row" id="card-config-passagem" style="display:none;">
+            <div><label>Valor do Metrô (R$)</label><input type="text" class="input-moeda" id="input-valor-metro" placeholder="0,00"></div>
+            <div><label>Valor do Ônibus (R$)</label><input type="text" class="input-moeda" id="input-valor-onibus" placeholder="0,00"></div>
+            <div style="align-self:flex-end;"><button onclick="salvarConfigPassagem()">Salvar valores</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-calculadora" class="view">
+      <div class="topbar"><h1>🧮 Calculadora de Simulação</h1></div>
+      <div class="card">
+        <h2>Simular Venda / Produto</h2>
+        <div class="form-row">
+          <div><label>Produto</label><select id="select-produto-calc" onchange="alterarProdutoSelecionado('calc')"></select></div>
+        </div>
+        <div id="campos-padrao-calc" class="form-row">
+          <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor-calc" placeholder="0,00"></div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-variavel-calc" placeholder="0,00"></div>
+        </div>
+        <div id="campos-seguro-calc" class="form-row" style="display:none;">
+          <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio-calc" placeholder="0,00"></div>
+          <div><label>Seguradora</label>
+            <select id="select-seguradora-calc" onchange="alterarSeguradoraSelecionada('calc')">
+              <option value="Azos">Azos</option>
+              <option value="Bradesco">Bradesco</option>
+              <option value="Genial">Genial</option>
+              <option value="Icatu">Icatu</option>
+              <option value="MAG">MAG</option>
+              <option value="MetLife">MetLife</option>
+              <option value="Porto">Porto</option>
+            </select>
+          </div>
+          <div id="campo-pj2-calc" style="display:none;">
+            <label>Mesa PJ2 participou?</label>
+            <select id="select-pj2-calc">
+              <option value="nao">Não</option><option value="sim">Sim</option>
+            </select>
+          </div>
+        </div>
+        <div id="campos-consorcio-calc" class="form-row" style="display:none;">
+          <div><label>Valor do Consórcio (R$)</label><input type="text" class="input-moeda" id="input-valor-consorcio-calc" placeholder="0,00"></div>
+          <div><label>Administradora</label>
+            <select id="select-administradora-consorcio-calc">
+              <option value="HS">HS</option>
+              <option value="Ademicon">Ademicon</option>
+              <option value="Embracon">Embracon</option>
+            </select>
+          </div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-consorcio-calc" placeholder="0,00"></div>
+        </div>
+        <div id="campos-renda-variavel-calc" class="form-row" style="display:none;">
+          <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor-rv-calc" placeholder="0,00"></div>
+          <div><label>Tipo de Renda Variável</label>
+            <select id="select-tipo-rv-calc">
+              <option value="Ações">Ações</option>
+              <option value="Opções">Opções</option>
+            </select>
+          </div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-rv-calc" placeholder="0,00"></div>
+        </div>
+        <div id="campos-plano-saude-calc" class="form-row" style="display:none;">
+          <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio-ps-calc" placeholder="0,00"></div>
+          <div><label>Empresa</label>
+            <select id="select-empresa-ps-calc">
+              <option value="Sul América">Sul América</option>
+              <option value="Porto">Porto</option>
+              <option value="Bradesco">Bradesco</option>
+              <option value="HapVida">HapVida</option>
+            </select>
+          </div>
+          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps-calc" placeholder="0,00"></div>
+        </div>
+        <div class="form-row">
+          <button onclick="adicionarSimulacao()">Adicionar à simulação</button>
+          <button class="secondary" onclick="limparSimulacao()">Limpar simulação</button>
+        </div>
+        <div id="resultado-simulacao"></div>
+        <p class="status">
+          A Calculadora é somente para simulação. Ela não grava vendas,
+          não altera remunerações e não envia repasses.
+        </p>
+      </div>
+    </section>
+
+    <section id="view-equipe" class="view">
+      <div class="topbar"><h1>👨‍💼 Equipe</h1></div>
+      <div class="card">
+        <h2>Adicionar novo colaborador</h2>
+        <div class="form-row">
+          <div><label>Nome</label><input type="text" id="input-novo-assessor-nome"></div>
+          <div><label>Login</label><input type="text" id="input-novo-assessor-login"></div>
+          <div><label>Senha</label><input type="text" id="input-novo-assessor-senha"></div>
+          <div><label>Função</label>
+            <select id="select-novo-tipo-funcionario">
+              <option value="assessor">Assessor</option>
+              <option value="sdr">SDR</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end;"><button onclick="adicionarAssessor()">Adicionar</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Adicionar novo administrador</h2>
+        <div class="form-row">
+          <div><label>Nome</label><input type="text" id="input-novo-admin-nome"></div>
+          <div><label>Login</label><input type="text" id="input-novo-admin-login"></div>
+          <div><label>Senha</label><input type="text" id="input-novo-admin-senha"></div>
+          <div style="align-self:flex-end;"><button onclick="adicionarAdmin()">Adicionar</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Equipe cadastrada</h2>
+        <p class="status">Excluir bloqueia o login imediatamente e remove o colaborador desta lista, preservando o histórico de meses anteriores. Converter SDR em assessor preserva toda a remuneração fixa já recebida como SDR; o piso de assessor passa a valer a partir do mês seguinte à conversão.</p>
+        <div class="tabela-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Login</th>
+                <th>Função</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabela-assessores">
+              <!-- Dados da equipe serão renderizados aqui -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-regras" class="view">
+      <div class="topbar"><h1>📋 Regras de Comissionamento</h1></div>
+      <div class="card">
+        <h2>Regras Gerais</h2>
+        <div class="regra-bloco">
+          <span class="regra-tag">Piso Mensal do Assessor</span>
+          <p>Assessores têm um piso mensal garantido de <strong>R$ 2.000,00</strong>. Se a soma das comissões variáveis e passagens do mês for inferior a este valor, o assessor receberá o piso.</p>
+        </div>
+        <div class="regra-bloco">
+          <span class="regra-tag">Remuneração Fixa do SDR</span>
+          <p>SDRs recebem um valor fixo mensal de <strong>R$ 2.000,00</strong>. Este valor é pago independentemente das vendas ou passagens.</p>
+        </div>
+        <div class="regra-bloco">
+          <span class="regra-tag">Reembolso de Passagem</span>
+          <p>Todos os colaboradores (assessores e SDRs) têm direito a reembolso de passagens (Metrô e Ônibus) conforme os valores configurados. Este valor é somado à remuneração do mês.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Regras por Produto</h2>
+        <div class="regra-bloco">
+          <span class="regra-tag">Renda Fixa, Fundos, Consórcio, Renda Variável, Plano de Saúde</span>
+          <p>O repasse para o escritório é de <strong>50% do percentual do título</strong> (ou prêmio, no caso de Plano de Saúde). Deste valor, <strong>50% vai para o escritório e 50% para o assessor</strong>.</p>
+          <p class="status">Exemplo: se o percentual do título é 2%, o escritório recebe 1% e o assessor recebe 1% sobre o valor investido/prêmio.</p>
+        </div>
+
+        <div class="regra-bloco">
+          <span class="regra-tag">Seguro (Genial, Bradesco, Icatu, MAG, MetLife, Porto)</span>
+          <p>O repasse para o escritório é de <strong>50% do prêmio mensal</strong>. Deste valor, <strong>50% vai para o escritório e 50% para o assessor</strong>.</p>
+          <p class="status">Exemplo: se o prêmio mensal é R$ 300,00, o escritório recebe R$ 150,00 e o assessor recebe R$ 75,00.</p>
+        </div>
+
+        <div class="regra-bloco">
+          <span class="regra-tag">Seguro (Azos) — Como a Azos paga o escritório</span>
+          <p>A Azos remunera o escritório com um percentual sobre o total de prêmios de Seguro Azos fechados no mês, somando as vendas de todos os assessores. Esse percentual tem duas partes: um bloco de <strong>agenciamento</strong> (125%, 175% ou 275%) e um bloco fixo de <strong>recorrência</strong> de 25%. Juntos formam 150%, 200% ou 300% sobre o total do mês.</p>
+          <p>O bloco de agenciamento segue estas faixas, calculadas sobre o <strong>total do escritório no mês</strong>:</p>
+          <ul>
+            <li>Total até R$ 499,99 no mês → <strong>125%</strong> de agenciamento.</li>
+            <li>Total a partir de R$ 500,00 no mês → <strong>175%</strong> de agenciamento.</li>
+            <li><strong>275%</strong> de agenciamento: liberado quando o total do mês anterior foi maior que R$ 1.500,00 <em>e</em> o total do mês atual também é maior que R$ 1.500,00. Se o mês atual não ultrapassar R$ 1.500,00, ele volta a usar a faixa normal (125% ou 175%), mesmo que o mês anterior tenha liberado a condição.</li>
+          </ul>
+          <p class="status">Exemplo: julho fecha em R$ 1.700 (libera a possibilidade para agosto). Se agosto também fechar acima de R$ 1.500, agosto recebe 275% e libera setembro. Se agosto fechar abaixo de R$ 1.500, agosto usa 125%/175% normalmente e não libera 275% para setembro. O primeiro mês de operação nunca recebe 275%, pois não existe mês anterior para comparação — ele apenas pode liberar o mês seguinte.</p>
+        </div>
+
+        <div class="regra-bloco">
+          <span class="regra-tag">Seguro (Azos) — Como o escritório repassa aos assessores</span>
+          <p><strong>Bloco de agenciamento (125/175/275):</strong> dividido 50% para o escritório e 50% para o conjunto de assessores. A fatia dos assessores é rateada de forma proporcional: cada assessor recebe (seu prêmio individual do mês ÷ prêmio total do escritório no mês) × total do bloco de agenciamento destinado aos assessores.</p>
+          <p><strong>Bloco de recorrência (25%):</strong> calculado por venda individual, dependendo da participação da mesa PJ2 naquela venda específica:</p>
+          <ul>
+            <li>Mesa PJ2 participou da venda → 22% para o escritório e 3% para o assessor sobre o prêmio daquela venda.</li>
+            <li>Mesa PJ2 não participou da venda → 21% para o escritório e 4% para o assessor sobre o prêmio daquela venda.</li>
+          </ul>
+          <p class="status">Exemplo: se após a divisão do escritório sobrarem R$ 5.362,50 para o conjunto de assessores e o total de vendas Azos do mês foi R$ 3.900,00, um assessor que vendeu R$ 100,00 recebe R$ 137,50 de agenciamento, mais 3% ou 4% de recorrência sobre os R$ 100,00 conforme a participação da mesa PJ2 naquela venda.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-importar-exportar" class="view">
+      <div class="topbar"><h1>📥 Importar e Exportar</h1></div>
+      <div class="card">
+        <h2>Backup (JSON)</h2>
+        <div class="form-row">
+          <button onclick="exportarBackup()">Exportar Backup (JSON)</button>
+          <input type="file" id="input-import-backup" accept=".json" onchange="importarBackup(event)">
+        </div>
+      </div>
+      <div class="card">
+        <h2>Importar Vendas via Excel</h2>
+        <button onclick="baixarModeloPlanilha()">Baixar modelo (.xlsx)</button>
+        <input type="file" id="input-arquivo-excel" accept=".xlsx,.xls" onchange="processarArquivoExcel(event)">
+        <pre class="status" id="resultado-importacao" style="white-space:pre-wrap; margin-top:14px;"></pre>
+      </div>
+      <div class="card">
+        <h2>Exportar Relatório em PDF</h2>
+        <div class="form-row" id="linha-selecionar-funcionario-pdf">
+          <div><label>Colaborador</label><select id="select-exportar-funcionario"></select></div>
+        </div>
+        <div class="form-row">
+          <div><label>Mês</label><input type="month" id="input-mes-exportar"></div>
+          <div style="align-self:flex-end;"><button class="secondary" onclick="document.getElementById('input-mes-exportar').value=''">Todos os períodos</button></div>
+          <div style="align-self:flex-end;"><button onclick="exportarFuncionarioPDF()">Exportar em PDF</button></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modal de Edição de Lançamento -->
+<div id="modal-edicao-overlay">
+  <div id="modal-edicao-box">
+    <h3 id="modal-edicao-titulo">✏️ Editar Lançamento</h3>
+    <div id="modal-edicao-corpo"></div>
+    <div class="modal-btns">
+      <button class="secondary" onclick="fecharModalEdicao()">Cancelar</button>
+      <button onclick="salvarEdicaoLancamento()">Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Contestação -->
+<div id="modal-contestacao-overlay">
+  <div id="modal-contestacao-box">
+    <h3>⚠️ Contestar Repasse</h3>
+    <p style="font-size:0.84rem;color:var(--muted);margin:0 0 10px">Explique o motivo da contestação. O administrador receberá sua mensagem.</p>
+    <textarea id="input-msg-contestacao" placeholder="Digite o motivo da contestação..."></textarea>
+    <div class="modal-btns">
+      <button class="secondary" onclick="fecharModalContestacao()">Cancelar</button>
+      <button class="btn-contestar" onclick="confirmarContestacao()">Enviar Contestação</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lógica JavaScript Principal -->
+<script src="js/script.js"></script>
+</body>
+</html>
