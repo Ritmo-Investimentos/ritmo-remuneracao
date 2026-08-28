@@ -374,19 +374,16 @@ async function calcularRemuneracaoVenda(venda, todasVendasDoMes = []) {
     detalheProduto = `Empresa: ${venda.empresaPlanoSaude}, %: ${venda.percentualTitulo}%`;
     valorLiquido = valorPrincipal * (percentualAssessor / 100);
     valorEscritorio = valorPrincipal * (venda.percentualTitulo / 100) - valorLiquido;
-  } else if (PRODUTOS_GENIAL_DEDUCAO.includes(venda.produto)) {
-    // Custo/taxa descontado diretamente do assessor, sem divisão com o escritório.
-    valorPrincipal = venda.comissaoAssessor;
-    detalheProduto = venda.origem === "genial-import" ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
-    valorEscritorio = 0;
-    valorLiquido = -venda.comissaoAssessor;
-  } else if (PRODUTOS_GENIAL.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
-    // Comissão bruta da Genial: 50% fica com o escritório, e desse valor
-    // ainda se desconta o imposto antes de chegar ao assessor.
+  } else if (PRODUTOS_GENIAL_TODOS.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
+    // Valor já vem com o sinal certo (positivo = receita, negativo = Custo de
+    // Plataforma/Taxa de Performance). O rateio ÷2 e o imposto de 19,03% são
+    // calculados de forma agregada no mês por calcularRemuneracaoMensal (que também
+    // aplica a regra de manter o valor bruto quando o total do mês é negativo);
+    // aqui fica apenas um cálculo de referência para uso isolado, como na Calculadora.
     valorPrincipal = venda.comissaoAssessor;
     detalheProduto = venda.origem === "genial-import" ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
     valorEscritorio = venda.comissaoAssessor / 2;
-    valorLiquido = valorEscritorio * (1 - IMPOSTO_REPASSE_GENIAL);
+    valorLiquido = venda.comissaoAssessor >= 0 ? (valorEscritorio * (1 - IMPOSTO_REPASSE_GENIAL)) : venda.comissaoAssessor;
   } else { // Renda Fixa, Fundos
     valorPrincipal = venda.valor;
     percentualAssessor = venda.percentualTitulo / 2; // 50% do percentual do título
@@ -443,6 +440,19 @@ async function calcularRemuneracaoMensal(funcionario, competencia, todasVendas, 
   // Calcular o total de prêmios Azos do assessor no mês
   const totalPremiosAzosAssessor = vendasDoMes.filter(v => v.produto === "Seguro" && v.seguradora === "Azos").reduce((sum, v) => sum + v.premio, 0);
 
+  // Repasse da Genial: soma todos os produtos do mês (receita soma, Custo de Plataforma/Taxa
+  // de Performance descontam, com o sinal que já vem da planilha). Se o total do mês for
+  // positivo, divide por 2 e desconta 19,03% de imposto; se for negativo, mantém o valor bruto
+  // (sem dividir/descontar imposto sobre prejuízo). O resultado é distribuído proporcionalmente
+  // entre os lançamentos do mês (mesma lógica de rateio já usada para o agenciamento Azos).
+  const isVendaGenial = v => PRODUTOS_GENIAL_TODOS.includes(v.produto) || v.produto === PRODUTO_REPASSE_IMPORTADO;
+  const vendasGenialDoMes = vendasDoMes.filter(isVendaGenial);
+  const totalBrutoGenialMes = vendasGenialDoMes.reduce((sum, v) => sum + (v.comissaoAssessor || 0), 0);
+  const liquidoGenialMes = totalBrutoGenialMes >= 0
+    ? (totalBrutoGenialMes / 2) * (1 - IMPOSTO_REPASSE_GENIAL)
+    : totalBrutoGenialMes;
+  const proporcaoLiquidoGenial = totalBrutoGenialMes !== 0 ? (liquidoGenialMes / totalBrutoGenialMes) : 0;
+
   for (const venda of vendasDoMes) {
     const { valorPrincipal, detalheProduto, valorEscritorio, valorLiquido } = await calcularRemuneracaoVenda(venda, todasVendas);
 
@@ -454,6 +464,9 @@ async function calcularRemuneracaoMensal(funcionario, competencia, todasVendas, 
         const proporcaoAssessor = totalPremiosAzosAssessor > 0 ? (venda.premio / totalPremiosAzosAssessor) : 0;
         valorLiquidoFinalVenda += agenciamentoAzosParaAssessores * proporcaoAssessor;
       }
+    } else if (isVendaGenial(venda)) {
+      // Substitui o cálculo isolado da venda pelo rateio do resultado agregado do mês.
+      valorLiquidoFinalVenda = venda.comissaoAssessor * proporcaoLiquidoGenial;
     }
 
     totalVariavelBruto += valorLiquidoFinalVenda;
@@ -480,7 +493,9 @@ async function calcularRemuneracaoMensal(funcionario, competencia, todasVendas, 
     totalVariavelMes: totalVariavelBruto,
     aplicouPiso,
     vendasCalculadas,
-    passagensCalculadas
+    passagensCalculadas,
+    totalBrutoGenialMes,
+    liquidoGenialMes
   };
 }
 
@@ -514,7 +529,7 @@ async function renderizarPainel() {
   });
 
   for (const funcionario of funcionariosAtivos) {
-    const { totalAssessorMes, totalVariavelMes, aplicouPiso, vendasCalculadas, passagensCalculadas } = await calcularRemuneracaoMensal(funcionario, filtroMes || competenciaAtualDoSistema(), todosVendas, todasPassagens);
+    const { totalAssessorMes, totalVariavelMes, aplicouPiso, vendasCalculadas, passagensCalculadas, totalBrutoGenialMes, liquidoGenialMes } = await calcularRemuneracaoMensal(funcionario, filtroMes || competenciaAtualDoSistema(), todosVendas, todasPassagens);
 
     totalGeral += totalAssessorMes;
 
@@ -539,6 +554,20 @@ async function renderizarPainel() {
     const botaoLimparMes = (isAdmin && filtroMes && (vendasCalculadas.length > 0 || passagensCalculadas.length > 0))
       ? `<div class="acoes-mes"><button class="btn-remover" onclick="limparLancamentosDoMes('${funcionario.id}','${filtroMes}')">🗑️ Excluir todos os lançamentos de ${formatarCompetencia(filtroMes)}</button></div>`
       : '';
+
+    let resumoGenialHtml = '';
+    if (totalBrutoGenialMes !== 0) {
+      const regraAplicada = totalBrutoGenialMes >= 0
+        ? `${formatarMoeda(totalBrutoGenialMes)} ÷ 2 = ${formatarMoeda(totalBrutoGenialMes / 2)} − imposto (19,03%)`
+        : `valor bruto negativo — imposto não é aplicado sobre prejuízo`;
+      resumoGenialHtml = `
+        <div class="regra-bloco" style="margin-top:10px;">
+          <span class="regra-tag">📥 Resumo do repasse Genial do mês</span>
+          <p>Valor bruto (todos os produtos, com desconto de Custo de Plataforma/Taxa de Performance): <strong>${formatarMoeda(totalBrutoGenialMes)}</strong></p>
+          <p class="status">${regraAplicada}</p>
+          <p>Líquido do repasse Genial: <strong>${formatarMoeda(liquidoGenialMes)}</strong></p>
+        </div>`;
+    }
 
     const detalhesHtml = [...vendasCalculadas, ...passagensCalculadas].map(item => {
       const tipoItem = item.produto ? 'venda' : 'passagem';
@@ -626,6 +655,7 @@ async function renderizarPainel() {
         </div>
         <div class="detalhes-funcionario-painel" id="detalhes-funcionario-${funcionario.id}" onclick="event.stopPropagation()">
           ${detalhesHtml || '<p class="status">Nenhum lançamento para este período.</p>'}
+          ${resumoGenialHtml}
           ${botaoLimparMes}
           ${blocoAprovacao}
         </div>
@@ -667,21 +697,13 @@ function construirLinhasVenda(item) {
   } else if (item.produto === 'Plano de Saúde') {
     linhas.push(`<div class="lancamento-linha">Prêmio mensal: ${formatarMoeda(item.valorPrincipal)}</div>`);
     if (item.percentualTitulo) linhas.push(`<div class="lancamento-linha">${item.percentualTitulo}% (50% ao assessor)</div>`);
-  } else if (PRODUTOS_GENIAL_DEDUCAO.includes(item.produto)) {
-    if (item.valorBrutoPlanilha !== undefined) {
-      linhas.push(`<div class="lancamento-linha">Valor bruto (Genial): ${formatarMoeda(item.valorBrutoPlanilha)}</div>`);
-      linhas.push(`<div class="lancamento-linha">Imposto (Genial): ${formatarMoeda(item.impostoPlanilha)}</div>`);
-    }
-    linhas.push(`<div class="lancamento-linha">Valor descontado do assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
-  } else if (PRODUTOS_GENIAL.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
-    const valorImposto = item.valorEscritorio * IMPOSTO_REPASSE_GENIAL;
+  } else if (PRODUTOS_GENIAL_TODOS.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
     if (item.valorBrutoPlanilha !== undefined) {
       linhas.push(`<div class="lancamento-linha">Valor bruto (Genial): ${formatarMoeda(item.valorBrutoPlanilha)}</div>`);
       linhas.push(`<div class="lancamento-linha">Imposto (Genial): ${formatarMoeda(item.impostoPlanilha)}</div>`);
     }
     linhas.push(`<div class="lancamento-linha">Comissão Assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Repasse ao escritório (50%): ${formatarMoeda(item.valorEscritorio)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Imposto (19,03%): ${formatarMoeda(valorImposto)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Parte do repasse Genial deste mês (ver resumo abaixo para o total ÷2 − imposto)</div>`);
   }
   return linhas.join('');
 }
@@ -859,8 +881,9 @@ async function salvarEdicaoLancamento() {
       venda.percentualTitulo = parseBR(document.getElementById('ed-percentual').value);
       venda.empresaPlanoSaude = document.getElementById('ed-empresa-ps').value;
     } else if (PRODUTOS_GENIAL_TODOS.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
-      venda.comissaoAssessor = parseBR(document.getElementById('ed-comissao-genial').value);
-      if (!venda.comissaoAssessor || venda.comissaoAssessor <= 0) { alert('Comissão inválida.'); return; }
+      const valorDigitado = parseBR(document.getElementById('ed-comissao-genial').value);
+      if (!valorDigitado) { alert('Comissão inválida.'); return; }
+      venda.comissaoAssessor = PRODUTOS_GENIAL_DEDUCAO.includes(venda.produto) ? -Math.abs(valorDigitado) : valorDigitado;
     } else {
       venda.valor = parseBR(document.getElementById('ed-valor').value);
       venda.percentualTitulo = parseBR(document.getElementById('ed-percentual').value);
@@ -1054,6 +1077,7 @@ async function lancarVenda() {
   } else if (PRODUTOS_GENIAL_TODOS.includes(produto)) {
     venda.comissaoAssessor = parseBR(document.getElementById("input-comissao-genial").value);
     if (isNaN(venda.comissaoAssessor) || venda.comissaoAssessor <= 0) { alert("Comissão do assessor inválida."); return; }
+    if (PRODUTOS_GENIAL_DEDUCAO.includes(produto)) venda.comissaoAssessor = -venda.comissaoAssessor;
   } else { // Renda Fixa, Fundos
     venda.valor = parseBR(document.getElementById("input-valor").value);
     venda.percentualTitulo = parseBR(document.getElementById("input-percentual-variavel").value);
@@ -1108,6 +1132,7 @@ async function importarRepasseGenial(event) {
       }
 
       const chavesMapeadasNormalizadas = Object.keys(MAPEAMENTO_REPASSE_GENIAL).map(k => ({ chave: k, norm: normalizarNome(k) }));
+      const temColunasBrutoImposto = "VALOR BRUTO AAI" in linhas[0] && "IMPOSTO" in linhas[0];
       const totaisPorFuncionario = {}; // { NOME_NORMALIZADO: { nome, produtos: { "competencia|produto": { comissao, bruto, imposto } } } }
       let linhasSemCompetencia = 0;
 
@@ -1130,18 +1155,18 @@ async function importarRepasseGenial(event) {
           continue;
         }
 
+        const tipoProdutoPlanilha = String(linha["TIPO PRODUTO"] || "").trim();
+        const produto = PRODUTOS_GENIAL_TODOS.includes(tipoProdutoPlanilha) ? tipoProdutoPlanilha : PRODUTO_REPASSE_IMPORTADO;
+
         // Prioriza a coluna "COMISSÃO ASSESSOR"; usa "VALOR LIQUIDO AAI" como alternativa
-        // em planilhas que não tenham essa coluna. Math.abs porque o sinal (soma ou
-        // desconto) é decidido pelo tipo de produto, não pelo sinal vindo da planilha.
+        // em planilhas que não tenham essa coluna. O sinal vindo da planilha é sempre
+        // respeitado tal como está — mesmo em Custo de Plataforma/Taxa de Performance,
+        // que costumam vir negativos, mas podem ter linhas positivas legítimas
+        // (estornos/créditos). Não forçamos o sinal aqui para não corromper esses casos.
         const valorComissaoBruto = linha["COMISSÃO ASSESSOR"] !== undefined && linha["COMISSÃO ASSESSOR"] !== ""
           ? linha["COMISSÃO ASSESSOR"]
           : linha["VALOR LIQUIDO AAI"];
-        const comissaoLiquida = Math.abs(Number(valorComissaoBruto) || 0);
-        const valorBruto = Math.abs(Number(linha["VALOR BRUTO AAI"]) || 0);
-        const valorImposto = Math.abs(Number(linha["IMPOSTO"]) || 0);
-
-        const tipoProdutoPlanilha = String(linha["TIPO PRODUTO"] || "").trim();
-        const produto = PRODUTOS_GENIAL_TODOS.includes(tipoProdutoPlanilha) ? tipoProdutoPlanilha : PRODUTO_REPASSE_IMPORTADO;
+        const comissaoLiquida = Number(valorComissaoBruto) || 0;
 
         const nomeFuncionario = MAPEAMENTO_REPASSE_GENIAL[encontrado.chave];
         const chaveFuncionario = normalizarNome(nomeFuncionario);
@@ -1150,8 +1175,10 @@ async function importarRepasseGenial(event) {
         if (!totaisPorFuncionario[chaveFuncionario]) totaisPorFuncionario[chaveFuncionario] = { nome: nomeFuncionario, produtos: {} };
         const acumulado = totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] || { comissao: 0, bruto: 0, imposto: 0 };
         acumulado.comissao += comissaoLiquida;
-        acumulado.bruto += valorBruto;
-        acumulado.imposto += valorImposto;
+        if (temColunasBrutoImposto) {
+          acumulado.bruto += Number(linha["VALOR BRUTO AAI"]) || 0;
+          acumulado.imposto += Number(linha["IMPOSTO"]) || 0;
+        }
         totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] = acumulado;
       }
 
@@ -1173,10 +1200,12 @@ async function importarRepasseGenial(event) {
             produto,
             competencia,
             comissaoAssessor: comissao,
-            valorBrutoPlanilha: bruto,
-            impostoPlanilha: imposto,
             origem: "genial-import"
           };
+          if (temColunasBrutoImposto) {
+            dadosVenda.valorBrutoPlanilha = bruto;
+            dadosVenda.impostoPlanilha = imposto;
+          }
           const existente = todasVendas.find(v => v.funcionarioId === funcionario.id && v.competencia === competencia && v.produto === produto && v.origem === "genial-import");
           if (existente) {
             await promisify(tx("vendas", "readwrite").put({ ...existente, ...dadosVenda }));
@@ -1277,6 +1306,7 @@ async function adicionarSimulacao() {
   } else if (PRODUTOS_GENIAL_TODOS.includes(produto)) {
     simulacaoItem.comissaoAssessor = parseBR(document.getElementById("input-comissao-genial-calc").value);
     if (isNaN(simulacaoItem.comissaoAssessor) || simulacaoItem.comissaoAssessor <= 0) { alert("Comissão do assessor inválida."); return; }
+    if (PRODUTOS_GENIAL_DEDUCAO.includes(produto)) simulacaoItem.comissaoAssessor = -simulacaoItem.comissaoAssessor;
   } else { // Renda Fixa, Fundos
     simulacaoItem.valor = parseBR(document.getElementById("input-valor-calc").value);
     simulacaoItem.percentualTitulo = parseBR(document.getElementById("input-percentual-variavel-calc").value);
