@@ -157,28 +157,6 @@ function promisify(req) {
   return Promise.resolve(req);
 }
 
-async function limparDadosExemplo() {
-  const jaLimpou = localStorage.getItem("dados_exemplo_removidos_v3");
-  if (!jaLimpou) {
-    try {
-      await promisify(tx('funcionarios', 'readwrite').clear());
-      await promisify(tx('vendas', 'readwrite').clear());
-      await promisify(tx('passagens', 'readwrite').clear());
-      await promisify(tx('aprovacoes', 'readwrite').clear());
-
-      const todosUsuarios = await promisify(tx('usuarios').getAll());
-      for (const u of todosUsuarios) {
-        if (u.login && u.login.toLowerCase() !== "gabriel.almeida") {
-          await promisify(tx('usuarios', 'readwrite').delete(u.id));
-        }
-      }
-      localStorage.setItem("dados_exemplo_removidos_v3", "true");
-    } catch (e) {
-      console.warn("Erro ao limpar dados de exemplo:", e);
-    }
-  }
-}
-
 async function garantirAdminsPadrao() {
   const usuarios = await promisify(tx('usuarios').getAll());
   for (const admin of ADMINS_PADRAO) {
@@ -194,7 +172,6 @@ async function garantirAdminsPadrao() {
       }));
     } else {
       let modificado = false;
-      if (existe.senha !== admin.senha) { existe.senha = admin.senha; modificado = true; }
       if (existe.tipo !== 'admin') { existe.tipo = 'admin'; modificado = true; }
       if (!existe.ativo) { existe.ativo = true; modificado = true; }
       if (modificado) {
@@ -1641,7 +1618,6 @@ function importarBackup(event) {
 
 (async () => {
   await abrirBanco();
-  await limparDadosExemplo();
   await garantirAdminsPadrao();
   await carregarConfigPassagem();
   await verificarSessao();
