@@ -8,5 +8,8 @@
       "iniciar-servidor.ps1",
       "**/.*"
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }
