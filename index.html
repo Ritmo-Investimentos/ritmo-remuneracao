@@ -70,6 +70,7 @@
         <div class="form-row">
           <div><label>Filtrar por mês</label><input type="month" id="filtro-mes-painel" onchange="renderizarPainel()"></div>
           <div style="align-self:flex-end;"><button class="secondary" onclick="limparFiltroMesPainel()">Ver todos os períodos</button></div>
+          <div style="align-self:flex-end;"><button id="botao-limpar-mes-todos" class="btn-remover" style="display:none;" onclick="limparRemuneracoesDoMesTodos()">🗑️ Excluir remunerações de todos os assessores do mês</button></div>
         </div>
       </div>
       <div id="lista-funcionarios-painel"></div>
