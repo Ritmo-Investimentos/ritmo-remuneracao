@@ -2,10 +2,11 @@
 // logins diretamente no Firestore, replicando exatamente o que
 // adicionarAssessor() faz na aplicação. Roda via GitHub Actions
 // (workflow seed-assessores.yml) usando a mesma credencial de deploy.
-const admin = require("firebase-admin");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
 
-admin.initializeApp({ projectId: "remuneracao-ritmo" });
-const db = admin.firestore();
+initializeApp({ projectId: "remuneracao-ritmo" });
+const db = getFirestore();
 
 const ASSESSORES = [
   { nome: "Wagner Pinheiro de Barros", login: "wagner.pinheiro" },
