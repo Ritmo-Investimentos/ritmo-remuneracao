@@ -1,0 +1,18 @@
+name: Seed assessores (uso único)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_REMUNERACAO_RITMO }}"
+      - run: npm install firebase-admin
+      - run: node scripts/seed-assessores.js
