@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "remuneracao-ritmo-investimentos",
     "public": ".",
     "ignore": [
       "firebase.json",
