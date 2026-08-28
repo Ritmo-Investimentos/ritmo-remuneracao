@@ -397,7 +397,7 @@ async function calcularRemuneracaoVenda(venda, todasVendasDoMes = []) {
   } else if (PRODUTOS_GENIAL.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
     // Comissão já vem pronta da Genial; não há cálculo de percentual aqui.
     valorPrincipal = venda.comissaoAssessor;
-    detalheProduto = venda.produto === PRODUTO_REPASSE_IMPORTADO ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
+    detalheProduto = venda.origem === "genial-import" ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
     valorLiquido = venda.comissaoAssessor;
     valorEscritorio = 0;
   } else { // Renda Fixa, Fundos
@@ -544,6 +544,10 @@ async function renderizarPainel() {
     const isAdmin = usuarioLogado.tipo === "admin";
     const isMeuCard = usuarioLogado.funcionarioId === funcionario.id;
 
+    const botaoLimparMes = (isAdmin && filtroMes && (vendasCalculadas.length > 0 || passagensCalculadas.length > 0))
+      ? `<div class="acoes-mes"><button class="btn-remover" onclick="limparLancamentosDoMes('${funcionario.id}','${filtroMes}')">🗑️ Excluir todos os lançamentos de ${formatarCompetencia(filtroMes)}</button></div>`
+      : '';
+
     const detalhesHtml = [...vendasCalculadas, ...passagensCalculadas].map(item => {
       const tipoItem = item.produto ? 'venda' : 'passagem';
       const botoesAdmin = isAdmin ? `
@@ -630,6 +634,7 @@ async function renderizarPainel() {
         </div>
         <div class="detalhes-funcionario-painel" id="detalhes-funcionario-${funcionario.id}" onclick="event.stopPropagation()">
           ${detalhesHtml || '<p class="status">Nenhum lançamento para este período.</p>'}
+          ${botaoLimparMes}
           ${blocoAprovacao}
         </div>
       </div>
@@ -680,6 +685,21 @@ async function excluirLancamento(tipo, id) {
   if (!confirm('Excluir este lançamento? Esta ação não pode ser desfeita.')) return;
   const store = tipo === 'venda' ? 'vendas' : 'passagens';
   await promisify(tx(store, 'readwrite').delete(id));
+  await renderizarPainel();
+}
+
+async function limparLancamentosDoMes(funcionarioId, competencia) {
+  if (!confirm(`Excluir TODOS os lançamentos de ${formatarCompetencia(competencia)} deste colaborador? Esta ação não pode ser desfeita.`)) return;
+
+  const todasVendas = await promisify(tx('vendas').getAll());
+  const todasPassagens = await promisify(tx('passagens').getAll());
+  const vendasDoMes = todasVendas.filter(v => v.funcionarioId === funcionarioId && v.competencia === competencia);
+  const passagensDoMes = todasPassagens.filter(p => p.funcionarioId === funcionarioId && p.competencia === competencia);
+
+  for (const v of vendasDoMes) await promisify(tx('vendas', 'readwrite').delete(v.id));
+  for (const p of passagensDoMes) await promisify(tx('passagens', 'readwrite').delete(p.id));
+
+  alert('Lançamentos do mês excluídos.');
   await renderizarPainel();
 }
 
@@ -1054,7 +1074,7 @@ async function importarRepasseGenial(event) {
       const linhas = XLSX.utils.sheet_to_json(planilha, { range: 1, defval: "" });
 
       const chavesMapeadasNormalizadas = Object.keys(MAPEAMENTO_REPASSE_GENIAL).map(k => ({ chave: k, norm: normalizarNome(k) }));
-      const totaisPorFuncionario = {}; // { NOME_NORMALIZADO: { nome, meses: { competencia: soma } } }
+      const totaisPorFuncionario = {}; // { NOME_NORMALIZADO: { nome, produtos: { "competencia|produto": soma } } }
 
       for (const linha of linhas) {
         const assessorPlanilha = String(linha["ASSESSOR"] || "").trim();
@@ -1068,12 +1088,17 @@ async function importarRepasseGenial(event) {
         if (!(dataReceita instanceof Date) || isNaN(dataReceita.getTime())) continue;
         const competencia = `${dataReceita.getFullYear()}-${String(dataReceita.getMonth() + 1).padStart(2, "0")}`;
 
-        const comissao = Number(linha["COMISSÃO ASSESSOR"]) || 0;
+        // Usa o valor líquido (já com imposto descontado), não o valor bruto.
+        const comissaoLiquida = Number(linha["VALOR LIQUIDO AAI"]) || 0;
+        const tipoProdutoPlanilha = String(linha["TIPO PRODUTO"] || "").trim();
+        const produto = PRODUTOS_GENIAL.includes(tipoProdutoPlanilha) ? tipoProdutoPlanilha : PRODUTO_REPASSE_IMPORTADO;
+
         const nomeFuncionario = MAPEAMENTO_REPASSE_GENIAL[encontrado.chave];
         const chaveFuncionario = normalizarNome(nomeFuncionario);
+        const chaveProduto = `${competencia}|${produto}`;
 
-        if (!totaisPorFuncionario[chaveFuncionario]) totaisPorFuncionario[chaveFuncionario] = { nome: nomeFuncionario, meses: {} };
-        totaisPorFuncionario[chaveFuncionario].meses[competencia] = (totaisPorFuncionario[chaveFuncionario].meses[competencia] || 0) + comissao;
+        if (!totaisPorFuncionario[chaveFuncionario]) totaisPorFuncionario[chaveFuncionario] = { nome: nomeFuncionario, produtos: {} };
+        totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] = (totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] || 0) + comissaoLiquida;
       }
 
       const todosFuncionarios = await promisify(tx("funcionarios").getAll());
@@ -1082,25 +1107,27 @@ async function importarRepasseGenial(event) {
       const naoEncontrados = new Set();
 
       for (const chave in totaisPorFuncionario) {
-        const { nome, meses } = totaisPorFuncionario[chave];
+        const { nome, produtos } = totaisPorFuncionario[chave];
         const funcionario = todosFuncionarios.find(f => normalizarNome(f.nome) === chave);
         if (!funcionario) { naoEncontrados.add(nome); continue; }
 
-        for (const competencia in meses) {
-          const total = meses[competencia];
-          const existente = todasVendas.find(v => v.funcionarioId === funcionario.id && v.competencia === competencia && v.produto === PRODUTO_REPASSE_IMPORTADO);
+        for (const chaveProduto in produtos) {
+          const [competencia, produto] = chaveProduto.split("|");
+          const total = produtos[chaveProduto];
+          const existente = todasVendas.find(v => v.funcionarioId === funcionario.id && v.competencia === competencia && v.produto === produto && v.origem === "genial-import");
           if (existente) {
             existente.comissaoAssessor = total;
             await promisify(tx("vendas", "readwrite").put(existente));
           } else {
             await promisify(tx("vendas", "readwrite").add({
               funcionarioId: funcionario.id,
-              produto: PRODUTO_REPASSE_IMPORTADO,
+              produto,
               competencia,
-              comissaoAssessor: total
+              comissaoAssessor: total,
+              origem: "genial-import"
             }));
           }
-          resumo.push(`${funcionario.nome} — ${formatarCompetencia(competencia)}: ${formatarMoeda(total)}`);
+          resumo.push(`${funcionario.nome} — ${formatarCompetencia(competencia)} — ${produto}: ${formatarMoeda(total)}`);
         }
       }
 
