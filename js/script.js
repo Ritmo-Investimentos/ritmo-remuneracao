@@ -52,11 +52,31 @@ let configPassagem = {
   onibus: 5.00
 };
 
-const PRODUTOS = ["Renda Fixa", "Fundos", "Seguro", "Consórcio", "Renda Variável", "Plano de Saúde"];
+const PRODUTOS_GENIAL = ["BTC", "Bmf", "Bovespa", "CRI/CRA", "Clubes", "Debênture", "Fundos C.O", "Mercado Secundário"];
+const PRODUTO_REPASSE_IMPORTADO = "Repasse Genial (Importado)";
+const PRODUTOS = ["Renda Fixa", "Fundos", "Seguro", "Consórcio", "Renda Variável", "Plano de Saúde", ...PRODUTOS_GENIAL];
 const SEGURADORAS = ["Azos", "Bradesco", "Genial", "Icatu", "MAG", "MetLife", "Porto"];
 const ADMINISTRADORAS_CONSORCIO = ["HS", "Ademicon", "Embracon"];
 const TIPOS_RENDA_VARIAVEL = ["Ações", "Opções"];
 const EMPRESAS_PLANO_SAUDE = ["Sul América", "Porto", "Bradesco", "HapVida"];
+
+// Mapeamento dos códigos/nomes de assessor da planilha da Genial para o nome do funcionário no sistema
+const MAPEAMENTO_REPASSE_GENIAL = {
+  "RT 2": "Pablo Henrique",
+  "RT 3": "Cauã Barqueta",
+  "RT 4": "Wagner Pinheiro de Barros",
+  "RT 9": "Gabriel Almeida de Sousa",
+  "LUCAS DE ARAÚJO FELIZARDO DA SILVA": "Lucas de Araújo Felizardo da Silva",
+  "DAVI DA SILVA FARIA": "Davi da Silva Faria"
+};
+
+function normalizarNome(s) {
+  return String(s || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
 
 const ADMINS_PADRAO = [
   { nome: "Gabriel Almeida", login: "gabriel.almeida", senha: "Ritmo@1234" }
@@ -374,6 +394,12 @@ async function calcularRemuneracaoVenda(venda, todasVendasDoMes = []) {
     detalheProduto = `Empresa: ${venda.empresaPlanoSaude}, %: ${venda.percentualTitulo}%`;
     valorLiquido = valorPrincipal * (percentualAssessor / 100);
     valorEscritorio = valorPrincipal * (venda.percentualTitulo / 100) - valorLiquido;
+  } else if (PRODUTOS_GENIAL.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
+    // Comissão já vem pronta da Genial; não há cálculo de percentual aqui.
+    valorPrincipal = venda.comissaoAssessor;
+    detalheProduto = venda.produto === PRODUTO_REPASSE_IMPORTADO ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
+    valorLiquido = venda.comissaoAssessor;
+    valorEscritorio = 0;
   } else { // Renda Fixa, Fundos
     valorPrincipal = venda.valor;
     percentualAssessor = venda.percentualTitulo / 2; // 50% do percentual do título
@@ -622,6 +648,8 @@ function construirTituloVenda(item) {
   if (item.produto === 'Plano de Saúde') return `🏥 Plano de Saúde · ${item.empresaPlanoSaude}`;
   if (item.produto === 'Renda Fixa') return `💰 Renda Fixa`;
   if (item.produto === 'Fundos') return `📊 Fundos`;
+  if (item.produto === PRODUTO_REPASSE_IMPORTADO) return `📥 Repasse Genial (Importado)`;
+  if (PRODUTOS_GENIAL.includes(item.produto)) return `📈 ${item.produto} (Genial)`;
   return item.produto;
 }
 
@@ -641,6 +669,8 @@ function construirLinhasVenda(item) {
   } else if (item.produto === 'Plano de Saúde') {
     linhas.push(`<div class="lancamento-linha">Prêmio mensal: ${formatarMoeda(item.valorPrincipal)}</div>`);
     if (item.percentualTitulo) linhas.push(`<div class="lancamento-linha">${item.percentualTitulo}% (50% ao assessor)</div>`);
+  } else if (PRODUTOS_GENIAL.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
+    linhas.push(`<div class="lancamento-linha">Comissão do Assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
   }
   return linhas.join('');
 }
@@ -707,6 +737,11 @@ async function abrirModalEdicao(tipo, id) {
           <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="ed-premio" value="${formatarBR(venda.premio)}"></div>
           <div><label>Empresa</label><select id="ed-empresa-ps">${optsPS}</select></div>
           <div><label>Percentual (%)</label><input type="text" class="input-pct" id="ed-percentual" value="${formatarBR(venda.percentualTitulo)}"></div>
+        </div>`;
+    } else if (PRODUTOS_GENIAL.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
+      camposEspecificos = `
+        <div class="form-row">
+          <div><label>Comissão do Assessor (R$)</label><input type="text" class="input-moeda" id="ed-comissao-genial" value="${formatarBR(venda.comissaoAssessor)}"></div>
         </div>`;
     } else { // Renda Fixa, Fundos
       camposEspecificos = `
@@ -780,6 +815,9 @@ async function salvarEdicaoLancamento() {
       venda.premio = parseBR(document.getElementById('ed-premio').value);
       venda.percentualTitulo = parseBR(document.getElementById('ed-percentual').value);
       venda.empresaPlanoSaude = document.getElementById('ed-empresa-ps').value;
+    } else if (PRODUTOS_GENIAL.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
+      venda.comissaoAssessor = parseBR(document.getElementById('ed-comissao-genial').value);
+      if (!venda.comissaoAssessor || venda.comissaoAssessor <= 0) { alert('Comissão inválida.'); return; }
     } else {
       venda.valor = parseBR(document.getElementById('ed-valor').value);
       venda.percentualTitulo = parseBR(document.getElementById('ed-percentual').value);
@@ -902,6 +940,7 @@ function alterarProdutoSelecionado(prefixo) {
   document.getElementById(`campos-consorcio${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
   document.getElementById(`campos-renda-variavel${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
   document.getElementById(`campos-plano-saude${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
+  document.getElementById(`campos-genial${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
 
   // Mostra os campos relevantes
   if (produto === "Seguro") {
@@ -916,6 +955,8 @@ function alterarProdutoSelecionado(prefixo) {
   } else if (produto === "Plano de Saúde") {
     document.getElementById(`campos-plano-saude${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
     popularSelect(document.getElementById(`select-empresa-ps${prefixo === 'calc' ? '-calc' : ''}`), EMPRESAS_PLANO_SAUDE);
+  } else if (PRODUTOS_GENIAL.includes(produto)) {
+    document.getElementById(`campos-genial${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
   } else { // Renda Fixa, Fundos
     document.getElementById(`campos-padrao${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
   }
@@ -967,6 +1008,9 @@ async function lancarVenda() {
     venda.percentualTitulo = parseBR(document.getElementById("input-percentual-ps").value);
     venda.empresaPlanoSaude = document.getElementById("select-empresa-ps").value;
     if (isNaN(venda.premio) || venda.premio <= 0 || isNaN(venda.percentualTitulo) || venda.percentualTitulo <= 0) { alert("Prêmio ou percentual inválidos."); return; }
+  } else if (PRODUTOS_GENIAL.includes(produto)) {
+    venda.comissaoAssessor = parseBR(document.getElementById("input-comissao-genial").value);
+    if (isNaN(venda.comissaoAssessor) || venda.comissaoAssessor <= 0) { alert("Comissão do assessor inválida."); return; }
   } else { // Renda Fixa, Fundos
     venda.valor = parseBR(document.getElementById("input-valor").value);
     venda.percentualTitulo = parseBR(document.getElementById("input-percentual-variavel").value);
@@ -992,6 +1036,89 @@ async function lancarPassagem() {
   await promisify(tx("passagens", "readwrite").add({ funcionarioId, competencia, tipo, quantidade, valorTotal }));
   alert("Passagem lançada com sucesso!");
   renderizarPainel(); // Atualiza o painel de remuneração
+}
+
+// ---- Importação automática do repasse da Genial ----
+async function importarRepasseGenial(event) {
+  const arquivo = event.target.files[0];
+  if (!arquivo) return;
+
+  const leitor = new FileReader();
+  leitor.onload = async function (e) {
+    try {
+      const dados = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(dados, { type: "array", cellDates: true });
+      const nomeAba = workbook.SheetNames.includes("Data") ? "Data" : workbook.SheetNames[0];
+      const planilha = workbook.Sheets[nomeAba];
+      // A planilha da Genial tem uma linha de aviso antes do cabeçalho real; pula a primeira linha.
+      const linhas = XLSX.utils.sheet_to_json(planilha, { range: 1, defval: "" });
+
+      const chavesMapeadasNormalizadas = Object.keys(MAPEAMENTO_REPASSE_GENIAL).map(k => ({ chave: k, norm: normalizarNome(k) }));
+      const totaisPorFuncionario = {}; // { NOME_NORMALIZADO: { nome, meses: { competencia: soma } } }
+
+      for (const linha of linhas) {
+        const assessorPlanilha = String(linha["ASSESSOR"] || "").trim();
+        if (!assessorPlanilha) continue;
+
+        const normAssessor = normalizarNome(assessorPlanilha);
+        const encontrado = chavesMapeadasNormalizadas.find(c => c.norm === normAssessor);
+        if (!encontrado) continue; // fora do mapeamento por enquanto — ignora
+
+        const dataReceita = linha["DATA DE RECEITA"];
+        if (!(dataReceita instanceof Date) || isNaN(dataReceita.getTime())) continue;
+        const competencia = `${dataReceita.getFullYear()}-${String(dataReceita.getMonth() + 1).padStart(2, "0")}`;
+
+        const comissao = Number(linha["COMISSÃO ASSESSOR"]) || 0;
+        const nomeFuncionario = MAPEAMENTO_REPASSE_GENIAL[encontrado.chave];
+        const chaveFuncionario = normalizarNome(nomeFuncionario);
+
+        if (!totaisPorFuncionario[chaveFuncionario]) totaisPorFuncionario[chaveFuncionario] = { nome: nomeFuncionario, meses: {} };
+        totaisPorFuncionario[chaveFuncionario].meses[competencia] = (totaisPorFuncionario[chaveFuncionario].meses[competencia] || 0) + comissao;
+      }
+
+      const todosFuncionarios = await promisify(tx("funcionarios").getAll());
+      const todasVendas = await promisify(tx("vendas").getAll());
+      const resumo = [];
+      const naoEncontrados = new Set();
+
+      for (const chave in totaisPorFuncionario) {
+        const { nome, meses } = totaisPorFuncionario[chave];
+        const funcionario = todosFuncionarios.find(f => normalizarNome(f.nome) === chave);
+        if (!funcionario) { naoEncontrados.add(nome); continue; }
+
+        for (const competencia in meses) {
+          const total = meses[competencia];
+          const existente = todasVendas.find(v => v.funcionarioId === funcionario.id && v.competencia === competencia && v.produto === PRODUTO_REPASSE_IMPORTADO);
+          if (existente) {
+            existente.comissaoAssessor = total;
+            await promisify(tx("vendas", "readwrite").put(existente));
+          } else {
+            await promisify(tx("vendas", "readwrite").add({
+              funcionarioId: funcionario.id,
+              produto: PRODUTO_REPASSE_IMPORTADO,
+              competencia,
+              comissaoAssessor: total
+            }));
+          }
+          resumo.push(`${funcionario.nome} — ${formatarCompetencia(competencia)}: ${formatarMoeda(total)}`);
+        }
+      }
+
+      let mensagem = resumo.length
+        ? `Importação concluída:\n\n${resumo.join("\n")}`
+        : "Nenhum lançamento correspondente ao mapeamento atual foi encontrado nesta planilha.";
+      if (naoEncontrados.size > 0) {
+        mensagem += `\n\n⚠️ Não encontrei cadastro na aba Equipe para: ${[...naoEncontrados].join(", ")}. Verifique se o nome está exatamente igual.`;
+      }
+      alert(mensagem);
+      event.target.value = "";
+      await renderizarPainel();
+    } catch (err) {
+      console.error("Erro ao importar repasse Genial:", err);
+      alert("Erro ao processar o arquivo. Confira se é o modelo correto da Genial (aba 'Data' com as colunas ASSESSOR, TIPO PRODUTO, DATA DE RECEITA, COMISSÃO ASSESSOR).");
+    }
+  };
+  leitor.readAsArrayBuffer(arquivo);
 }
 
 function atualizarValorPassagemLabel() {
@@ -1061,6 +1188,9 @@ async function adicionarSimulacao() {
     simulacaoItem.percentualTitulo = parseBR(document.getElementById("input-percentual-ps-calc").value);
     simulacaoItem.empresaPlanoSaude = document.getElementById("select-empresa-ps-calc").value;
     if (isNaN(simulacaoItem.premio) || simulacaoItem.premio <= 0 || isNaN(simulacaoItem.percentualTitulo) || simulacaoItem.percentualTitulo <= 0) { alert("Prêmio ou percentual inválidos."); return; }
+  } else if (PRODUTOS_GENIAL.includes(produto)) {
+    simulacaoItem.comissaoAssessor = parseBR(document.getElementById("input-comissao-genial-calc").value);
+    if (isNaN(simulacaoItem.comissaoAssessor) || simulacaoItem.comissaoAssessor <= 0) { alert("Comissão do assessor inválida."); return; }
   } else { // Renda Fixa, Fundos
     simulacaoItem.valor = parseBR(document.getElementById("input-valor-calc").value);
     simulacaoItem.percentualTitulo = parseBR(document.getElementById("input-percentual-variavel-calc").value);

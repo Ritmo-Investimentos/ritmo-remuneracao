@@ -143,7 +143,16 @@
           </div>
           <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps" placeholder="0,00"></div>
         </div>
+        <div id="campos-genial" class="form-row" style="display:none;">
+          <div><label>Comissão do Assessor (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial" placeholder="0,00"></div>
+        </div>
         <div class="form-row"><button onclick="lancarVenda()">Adicionar Venda</button></div>
+      </div>
+
+      <div class="card">
+        <h2>📥 Importar Repasse Genial (.xlsx)</h2>
+        <p class="status">Envie a planilha de repasse da Genial (aba "Data"). O sistema soma automaticamente a comissão de cada assessor mapeado, por mês, e lança o total no painel de remuneração.</p>
+        <input type="file" id="input-arquivo-genial" accept=".xlsx,.xls" onchange="importarRepasseGenial(event)">
       </div>
 
       <div class="card">
@@ -235,6 +244,9 @@
             </select>
           </div>
           <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps-calc" placeholder="0,00"></div>
+        </div>
+        <div id="campos-genial-calc" class="form-row" style="display:none;">
+          <div><label>Comissão do Assessor (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial-calc" placeholder="0,00"></div>
         </div>
         <div class="form-row">
           <button onclick="adicionarSimulacao()">Adicionar à simulação</button>
