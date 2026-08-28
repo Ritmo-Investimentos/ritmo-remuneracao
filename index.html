@@ -152,7 +152,10 @@
 
       <div class="card">
         <h2>📥 Importar Repasse Genial (.xlsx)</h2>
-        <p class="status">Envie a planilha de repasse da Genial (aba "Data"). O sistema soma automaticamente a comissão de cada assessor mapeado, por mês, e lança o total no painel de remuneração.</p>
+        <p class="status">Envie a planilha de repasse da Genial. O sistema soma automaticamente a comissão de cada assessor mapeado, por mês e por produto, e lança no painel de remuneração.</p>
+        <div class="form-row">
+          <div><label>Mês de referência (só necessário se a planilha não tiver coluna de data)</label><input type="month" id="input-competencia-importacao-genial"></div>
+        </div>
         <input type="file" id="input-arquivo-genial" accept=".xlsx,.xls" onchange="importarRepasseGenial(event)">
       </div>
 

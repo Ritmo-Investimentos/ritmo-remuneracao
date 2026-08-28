@@ -53,7 +53,7 @@ let configPassagem = {
   onibus: 5.00
 };
 
-const PRODUTOS_GENIAL = ["BTC", "Bmf", "Bovespa", "CRI/CRA", "Clubes", "Debênture", "Fundos C.O", "Mercado Secundário"];
+const PRODUTOS_GENIAL = ["BTC", "Bmf", "Bovespa", "CRI/CRA", "Clubes", "Debênture", "Fundos C.O", "Mercado Secundário", "IPO Bovespa", "Outros", "Previdência"];
 const PRODUTOS_GENIAL_DEDUCAO = ["Taxa de Performance", "Custo de Plataforma"]; // descontam do assessor, não somam
 const PRODUTOS_GENIAL_TODOS = [...PRODUTOS_GENIAL, ...PRODUTOS_GENIAL_DEDUCAO];
 const PRODUTO_REPASSE_IMPORTADO = "Repasse Genial (Importado)";
@@ -668,10 +668,18 @@ function construirLinhasVenda(item) {
     linhas.push(`<div class="lancamento-linha">Prêmio mensal: ${formatarMoeda(item.valorPrincipal)}</div>`);
     if (item.percentualTitulo) linhas.push(`<div class="lancamento-linha">${item.percentualTitulo}% (50% ao assessor)</div>`);
   } else if (PRODUTOS_GENIAL_DEDUCAO.includes(item.produto)) {
+    if (item.valorBrutoPlanilha !== undefined) {
+      linhas.push(`<div class="lancamento-linha">Valor bruto (Genial): ${formatarMoeda(item.valorBrutoPlanilha)}</div>`);
+      linhas.push(`<div class="lancamento-linha">Imposto (Genial): ${formatarMoeda(item.impostoPlanilha)}</div>`);
+    }
     linhas.push(`<div class="lancamento-linha">Valor descontado do assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
   } else if (PRODUTOS_GENIAL.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
     const valorImposto = item.valorEscritorio * IMPOSTO_REPASSE_GENIAL;
-    linhas.push(`<div class="lancamento-linha">Comissão bruta (Genial): ${formatarMoeda(item.valorPrincipal)}</div>`);
+    if (item.valorBrutoPlanilha !== undefined) {
+      linhas.push(`<div class="lancamento-linha">Valor bruto (Genial): ${formatarMoeda(item.valorBrutoPlanilha)}</div>`);
+      linhas.push(`<div class="lancamento-linha">Imposto (Genial): ${formatarMoeda(item.impostoPlanilha)}</div>`);
+    }
+    linhas.push(`<div class="lancamento-linha">Comissão Assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
     linhas.push(`<div class="lancamento-linha">Repasse ao escritório (50%): ${formatarMoeda(item.valorEscritorio)}</div>`);
     linhas.push(`<div class="lancamento-linha">Imposto (19,03%): ${formatarMoeda(valorImposto)}</div>`);
   }
@@ -1078,6 +1086,8 @@ async function importarRepasseGenial(event) {
   const arquivo = event.target.files[0];
   if (!arquivo) return;
 
+  const competenciaManual = document.getElementById("input-competencia-importacao-genial").value; // usada só se a planilha não tiver coluna de data
+
   const leitor = new FileReader();
   leitor.onload = async function (e) {
     try {
@@ -1085,11 +1095,21 @@ async function importarRepasseGenial(event) {
       const workbook = XLSX.read(dados, { type: "array", cellDates: true });
       const nomeAba = workbook.SheetNames.includes("Data") ? "Data" : workbook.SheetNames[0];
       const planilha = workbook.Sheets[nomeAba];
-      // A planilha da Genial tem uma linha de aviso antes do cabeçalho real; pula a primeira linha.
-      const linhas = XLSX.utils.sheet_to_json(planilha, { range: 1, defval: "" });
+
+      // A planilha da Genial às vezes tem uma linha de aviso antes do cabeçalho,
+      // e às vezes não — detecta automaticamente onde está o cabeçalho real.
+      let linhas = XLSX.utils.sheet_to_json(planilha, { range: 0, defval: "" });
+      if (!(linhas.length && "ASSESSOR" in linhas[0])) {
+        linhas = XLSX.utils.sheet_to_json(planilha, { range: 1, defval: "" });
+      }
+      if (!(linhas.length && "ASSESSOR" in linhas[0])) {
+        alert("Não encontrei a coluna 'ASSESSOR' nesta planilha. Confira se é o modelo correto da Genial.");
+        return;
+      }
 
       const chavesMapeadasNormalizadas = Object.keys(MAPEAMENTO_REPASSE_GENIAL).map(k => ({ chave: k, norm: normalizarNome(k) }));
-      const totaisPorFuncionario = {}; // { NOME_NORMALIZADO: { nome, produtos: { "competencia|produto": soma } } }
+      const totaisPorFuncionario = {}; // { NOME_NORMALIZADO: { nome, produtos: { "competencia|produto": { comissao, bruto, imposto } } } }
+      let linhasSemCompetencia = 0;
 
       for (const linha of linhas) {
         const assessorPlanilha = String(linha["ASSESSOR"] || "").trim();
@@ -1099,14 +1119,27 @@ async function importarRepasseGenial(event) {
         const encontrado = chavesMapeadasNormalizadas.find(c => c.norm === normAssessor);
         if (!encontrado) continue; // fora do mapeamento por enquanto — ignora
 
+        let competencia;
         const dataReceita = linha["DATA DE RECEITA"];
-        if (!(dataReceita instanceof Date) || isNaN(dataReceita.getTime())) continue;
-        const competencia = `${dataReceita.getFullYear()}-${String(dataReceita.getMonth() + 1).padStart(2, "0")}`;
+        if (dataReceita instanceof Date && !isNaN(dataReceita.getTime())) {
+          competencia = `${dataReceita.getFullYear()}-${String(dataReceita.getMonth() + 1).padStart(2, "0")}`;
+        } else if (competenciaManual) {
+          competencia = competenciaManual;
+        } else {
+          linhasSemCompetencia++;
+          continue;
+        }
 
-        // Usa o valor líquido (já com imposto descontado), não o valor bruto.
-        // Math.abs porque o sinal (soma ou desconto) é decidido pelo tipo de produto,
-        // não pelo sinal que vier da planilha.
-        const comissaoLiquida = Math.abs(Number(linha["VALOR LIQUIDO AAI"]) || 0);
+        // Prioriza a coluna "COMISSÃO ASSESSOR"; usa "VALOR LIQUIDO AAI" como alternativa
+        // em planilhas que não tenham essa coluna. Math.abs porque o sinal (soma ou
+        // desconto) é decidido pelo tipo de produto, não pelo sinal vindo da planilha.
+        const valorComissaoBruto = linha["COMISSÃO ASSESSOR"] !== undefined && linha["COMISSÃO ASSESSOR"] !== ""
+          ? linha["COMISSÃO ASSESSOR"]
+          : linha["VALOR LIQUIDO AAI"];
+        const comissaoLiquida = Math.abs(Number(valorComissaoBruto) || 0);
+        const valorBruto = Math.abs(Number(linha["VALOR BRUTO AAI"]) || 0);
+        const valorImposto = Math.abs(Number(linha["IMPOSTO"]) || 0);
+
         const tipoProdutoPlanilha = String(linha["TIPO PRODUTO"] || "").trim();
         const produto = PRODUTOS_GENIAL_TODOS.includes(tipoProdutoPlanilha) ? tipoProdutoPlanilha : PRODUTO_REPASSE_IMPORTADO;
 
@@ -1115,7 +1148,11 @@ async function importarRepasseGenial(event) {
         const chaveProduto = `${competencia}|${produto}`;
 
         if (!totaisPorFuncionario[chaveFuncionario]) totaisPorFuncionario[chaveFuncionario] = { nome: nomeFuncionario, produtos: {} };
-        totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] = (totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] || 0) + comissaoLiquida;
+        const acumulado = totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] || { comissao: 0, bruto: 0, imposto: 0 };
+        acumulado.comissao += comissaoLiquida;
+        acumulado.bruto += valorBruto;
+        acumulado.imposto += valorImposto;
+        totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] = acumulado;
       }
 
       const todosFuncionarios = await promisify(tx("funcionarios").getAll());
@@ -1130,21 +1167,23 @@ async function importarRepasseGenial(event) {
 
         for (const chaveProduto in produtos) {
           const [competencia, produto] = chaveProduto.split("|");
-          const total = produtos[chaveProduto];
+          const { comissao, bruto, imposto } = produtos[chaveProduto];
+          const dadosVenda = {
+            funcionarioId: funcionario.id,
+            produto,
+            competencia,
+            comissaoAssessor: comissao,
+            valorBrutoPlanilha: bruto,
+            impostoPlanilha: imposto,
+            origem: "genial-import"
+          };
           const existente = todasVendas.find(v => v.funcionarioId === funcionario.id && v.competencia === competencia && v.produto === produto && v.origem === "genial-import");
           if (existente) {
-            existente.comissaoAssessor = total;
-            await promisify(tx("vendas", "readwrite").put(existente));
+            await promisify(tx("vendas", "readwrite").put({ ...existente, ...dadosVenda }));
           } else {
-            await promisify(tx("vendas", "readwrite").add({
-              funcionarioId: funcionario.id,
-              produto,
-              competencia,
-              comissaoAssessor: total,
-              origem: "genial-import"
-            }));
+            await promisify(tx("vendas", "readwrite").add(dadosVenda));
           }
-          resumo.push(`${funcionario.nome} — ${formatarCompetencia(competencia)} — ${produto}: ${formatarMoeda(total)}`);
+          resumo.push(`${funcionario.nome} — ${formatarCompetencia(competencia)} — ${produto}: ${formatarMoeda(comissao)}`);
         }
       }
 
@@ -1154,12 +1193,15 @@ async function importarRepasseGenial(event) {
       if (naoEncontrados.size > 0) {
         mensagem += `\n\n⚠️ Não encontrei cadastro na aba Equipe para: ${[...naoEncontrados].join(", ")}. Verifique se o nome está exatamente igual.`;
       }
+      if (linhasSemCompetencia > 0) {
+        mensagem += `\n\n⚠️ ${linhasSemCompetencia} linha(s) foram ignoradas por não terem data de receita nem um mês de referência selecionado antes de importar.`;
+      }
       alert(mensagem);
       event.target.value = "";
       await renderizarPainel();
     } catch (err) {
       console.error("Erro ao importar repasse Genial:", err);
-      alert("Erro ao processar o arquivo. Confira se é o modelo correto da Genial (aba 'Data' com as colunas ASSESSOR, TIPO PRODUTO, DATA DE RECEITA, COMISSÃO ASSESSOR).");
+      alert("Erro ao processar o arquivo. Confira se é o modelo correto da Genial (colunas ASSESSOR, TIPO PRODUTO, COMISSÃO ASSESSOR).");
     }
   };
   leitor.readAsArrayBuffer(arquivo);
