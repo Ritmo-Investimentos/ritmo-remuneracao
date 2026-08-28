@@ -16,11 +16,12 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyDtY-ftesVOgJWL1oXiwbjrFC_jlO2jMIA",
   authDomain: "remuneracao-ritmo.firebaseapp.com",
+  databaseURL: "https://remuneracao-ritmo-default-rtdb.firebaseio.com",
   projectId: "remuneracao-ritmo",
   storageBucket: "remuneracao-ritmo.firebasestorage.app",
   messagingSenderId: "923670741677",
-  appId: "1:923670741677:web:debca08c0553dee5597c24",
-  measurementId: "G-BF7ML9JCVY"
+  appId: "1:923670741677:web:4d7b6c89c2dbff64597c24",
+  measurementId: "G-LP0FHNQVKW"
 };
 
 const app = initializeApp(firebaseConfig);

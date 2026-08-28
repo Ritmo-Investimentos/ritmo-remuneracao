@@ -1,0 +1,29 @@
+name: Deploy to Firebase Hosting on merge
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_REMUNERACAO_RITMO }}"
+          channelId: live
+          projectId: remuneracao-ritmo
+          target: remuneracao-ritmo-investimentos
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_REMUNERACAO_RITMO }}"
+      - name: Deploy Firestore rules
+        run: npx firebase-tools@latest deploy --only firestore:rules --project remuneracao-ritmo

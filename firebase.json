@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "remuneracao-ritmo-investimentos",
     "public": ".",
     "ignore": [
       "firebase.json",
@@ -7,5 +8,8 @@
       "iniciar-servidor.ps1",
       "**/.*"
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }
