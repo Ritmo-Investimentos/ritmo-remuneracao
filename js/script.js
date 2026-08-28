@@ -46,6 +46,7 @@ let simulacaoAtual = [];
 
 const PISO_MENSAL_ASSESSOR = 2000;
 const VALOR_FIXO_SDR = 2000;
+const IMPOSTO_REPASSE_GENIAL = 0.1903; // 19,03% sobre a parte do escritório no repasse da Genial
 
 let configPassagem = {
   metro: 7.90,
@@ -372,11 +373,12 @@ async function calcularRemuneracaoVenda(venda, todasVendasDoMes = []) {
     valorLiquido = valorPrincipal * (percentualAssessor / 100);
     valorEscritorio = valorPrincipal * (venda.percentualTitulo / 100) - valorLiquido;
   } else if (PRODUTOS_GENIAL.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
-    // Comissão já vem pronta da Genial; não há cálculo de percentual aqui.
+    // Comissão bruta da Genial: 50% fica com o escritório, e desse valor
+    // ainda se desconta o imposto antes de chegar ao assessor.
     valorPrincipal = venda.comissaoAssessor;
     detalheProduto = venda.origem === "genial-import" ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
-    valorLiquido = venda.comissaoAssessor;
-    valorEscritorio = 0;
+    valorEscritorio = venda.comissaoAssessor / 2;
+    valorLiquido = valorEscritorio * (1 - IMPOSTO_REPASSE_GENIAL);
   } else { // Renda Fixa, Fundos
     valorPrincipal = venda.valor;
     percentualAssessor = venda.percentualTitulo / 2; // 50% do percentual do título
@@ -652,7 +654,10 @@ function construirLinhasVenda(item) {
     linhas.push(`<div class="lancamento-linha">Prêmio mensal: ${formatarMoeda(item.valorPrincipal)}</div>`);
     if (item.percentualTitulo) linhas.push(`<div class="lancamento-linha">${item.percentualTitulo}% (50% ao assessor)</div>`);
   } else if (PRODUTOS_GENIAL.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
-    linhas.push(`<div class="lancamento-linha">Comissão do Assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
+    const valorImposto = item.valorEscritorio * IMPOSTO_REPASSE_GENIAL;
+    linhas.push(`<div class="lancamento-linha">Comissão bruta (Genial): ${formatarMoeda(item.valorPrincipal)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Repasse ao escritório (50%): ${formatarMoeda(item.valorEscritorio)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Imposto (19,03%): ${formatarMoeda(valorImposto)}</div>`);
   }
   return linhas.join('');
 }
