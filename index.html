@@ -314,23 +314,15 @@
     <section id="view-regras" class="view">
       <div class="topbar"><h1>📋 Regras de Comissionamento</h1></div>
       <div class="card">
-        <h2>Regras Gerais</h2>
-        <div class="regra-bloco">
-          <span class="regra-tag">Piso Mensal do Assessor</span>
-          <p>Assessores têm um piso mensal garantido de <strong>R$ 2.000,00</strong>. Se a soma das comissões variáveis e passagens do mês for inferior a este valor, o assessor receberá o piso.</p>
-        </div>
-        <div class="regra-bloco">
-          <span class="regra-tag">Remuneração Fixa do SDR</span>
-          <p>SDRs recebem um valor fixo mensal de <strong>R$ 2.000,00</strong>. Este valor é pago independentemente das vendas ou passagens.</p>
-        </div>
-        <div class="regra-bloco">
-          <span class="regra-tag">Reembolso de Passagem</span>
-          <p>Todos os colaboradores (assessores e SDRs) têm direito a reembolso de passagens (Metrô e Ônibus) conforme os valores configurados. Este valor é somado à remuneração do mês.</p>
-        </div>
-      </div>
-
-      <div class="card">
         <h2>Regras por Produto</h2>
+        <div class="regra-bloco">
+          <span class="regra-tag">Fundos C.O, Mercado Secundário, CRI/CRA, BTC, Bovespa, Bmf, Debênture, Outros, Taxa de Performance, Custo de Plataforma, Previdência, IPO Bovespa, Clubes (Genial)</span>
+          <p>O repasse desses produtos é calculado em <strong>2 fases</strong>, sempre a partir da <strong>Comissão Líquida</strong> de cada produto (o valor que a Genial já apura como líquido no relatório dela — a mesma "Comissão Líquida" da tela de importação/lançamento).</p>
+          <p><strong>Fase 1 — Genial repassa para a Ritmo:</strong> a Genial retém <strong>1,5% de IRFF</strong> sobre a Comissão Líquida de cada produto (mesma alíquota para todos os produtos da lista, inclusive Custo de Plataforma e Taxa de Performance) e repassa o restante para a Ritmo. Essa fase só é aplicada nos lançamentos <strong>importados da planilha</strong> — o valor salvo ali ainda não passou por esse IRFF. Nos lançamentos <strong>manuais</strong> (tela "Lançar Repasse" ou Calculadora), o admin já digita a Comissão Líquida pronta, depois desse IRFF, então essa fase é pulada.</p>
+          <p><strong>Fase 2 — Ritmo repassa para o assessor:</strong> sobre o valor que sobrou da fase 1, a Ritmo fica com <strong>50%</strong> e desconta <strong>19,03% de imposto</strong> sobre essa metade — o resultado é o valor líquido pago ao assessor. Essa fase se aplica sempre, inclusive quando o total é negativo (Custo de Plataforma e Taxa de Performance normalmente reduzem o valor do assessor, sem tratamento especial de sinal).</p>
+          <p class="status">Exemplo: um produto com Comissão Líquida de R$ 1.000,00, importado da planilha → Fase 1: R$ 1.000,00 × (1 − 1,5%) = R$ 985,00. Fase 2: R$ 985,00 ÷ 2 = R$ 492,50; R$ 492,50 × (1 − 19,03%) = <strong>R$ 398,78</strong> ao assessor. Se o mesmo valor fosse lançado manualmente (Comissão Líquida já pronta), pula a fase 1: R$ 1.000,00 ÷ 2 = R$ 500,00; R$ 500,00 × (1 − 19,03%) = <strong>R$ 404,85</strong> ao assessor.</p>
+        </div>
+
         <div class="regra-bloco">
           <span class="regra-tag">Renda Fixa, Fundos, Consórcio, Renda Variável, Plano de Saúde</span>
           <p>O repasse para o escritório é de <strong>50% do percentual do título</strong> (ou prêmio, no caso de Plano de Saúde). Deste valor, <strong>50% vai para o escritório e 50% para o assessor</strong>.</p>
