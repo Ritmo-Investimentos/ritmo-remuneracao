@@ -421,12 +421,16 @@ async function calcularRemuneracaoVenda(venda, todasVendasDoMes = []) {
   } else if (PRODUTOS_GENIAL_TODOS.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
     // Repasse da Genial em 2 fases:
     // Fase 1 (Genial -> Ritmo): a Genial retém 1,5% de IRFF sobre a comissão líquida
-    // de cada produto (mesma alíquota para todos, inclusive Custo de Plataforma/Taxa
-    // de Performance) e repassa o líquido à Ritmo.
+    // de cada produto (mesma alíquota para todos) e repassa o líquido à Ritmo. Só se
+    // aplica a lançamentos importados da planilha — o valor lá é a "Comissão Líquida"
+    // de Genial, antes desse IRFF. No lançamento manual, o admin já digita a comissão
+    // líquida pronta (depois desse IRFF), então essa fase é pulada.
     // Fase 2 (Ritmo -> assessor): a Ritmo fica com 50% dessa comissão líquida,
     // desconta 19,03% de imposto sobre a sua parte e paga o assessor — sempre,
     // independente do sinal (produtos negativos reduzem o total normalmente).
-    const comissaoLiquidaRitmo = venda.comissaoAssessor * (1 - IRFF_GENIAL_NORMAL);
+    const comissaoLiquidaRitmo = venda.origem === "genial-import"
+      ? venda.comissaoAssessor * (1 - IRFF_GENIAL_NORMAL)
+      : venda.comissaoAssessor;
     valorPrincipal = venda.comissaoAssessor;
     detalheProduto = venda.origem === "genial-import" ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
     valorEscritorio = comissaoLiquidaRitmo / 2;
@@ -823,7 +827,7 @@ async function abrirModalEdicao(tipo, id) {
     } else if (PRODUTOS_GENIAL_TODOS.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
       camposEspecificos = `
         <div class="form-row">
-          <div><label>Comissão do Assessor (R$)</label><input type="text" class="input-moeda" id="ed-comissao-genial" value="${formatarBR(venda.comissaoAssessor)}"></div>
+          <div><label>Comissão Líquida (R$)</label><input type="text" class="input-moeda" id="ed-comissao-genial" value="${formatarBR(venda.comissaoAssessor)}"></div>
         </div>`;
     } else { // Renda Fixa, Fundos
       camposEspecificos = `
