@@ -131,6 +131,8 @@ button.secondary:hover { background:#475569; }
 .btn-editar-lancamento:hover { background:#b45309; }
 .grupo-btns-lancamento { display:flex; gap:4px; flex-shrink:0; }
 
+.valor-negativo { color:var(--danger); font-weight:700; }
+
 /* Aprovação */
 .bloco-aprovacao { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); }
 .badge-aprovacao { display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:4px 10px; border-radius:999px; }
