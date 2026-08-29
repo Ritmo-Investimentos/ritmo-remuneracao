@@ -83,6 +83,32 @@ function normalizarNome(s) {
     .toUpperCase();
 }
 
+function distanciaEdicao(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+// Algumas planilhas da Genial chegam com um caractere corrompido no lugar de uma
+// letra acentuada (ex.: "Mercado Secund¿rio" em vez de "Mercado Secundário").
+// Tolera até 1 caractere de diferença para não jogar esses casos no "Repasse
+// Genial (Importado)" só por causa de um erro de codificação da própria planilha.
+function identificarProdutoGenial(tipoProdutoPlanilha) {
+  const alvo = normalizarNome(tipoProdutoPlanilha);
+  if (!alvo) return null;
+  let melhor = null, menorDistancia = Infinity;
+  for (const produto of PRODUTOS_GENIAL_TODOS) {
+    const d = distanciaEdicao(alvo, normalizarNome(produto));
+    if (d < menorDistancia) { menorDistancia = d; melhor = produto; }
+  }
+  return menorDistancia <= 1 ? melhor : null;
+}
+
 const ADMINS_PADRAO = [
   { nome: "Gabriel Almeida", login: "gabriel.almeida", senha: "Ritmo@1234" }
 ];
@@ -701,7 +727,8 @@ function construirLinhasVenda(item) {
       linhas.push(`<div class="lancamento-linha">Imposto (Genial): ${formatarMoeda(item.impostoPlanilha)}</div>`);
     }
     linhas.push(`<div class="lancamento-linha">Comissão Assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Parte do repasse Genial deste mês (ver resumo abaixo para o total ÷2 − imposto)</div>`);
+    linhas.push(`<div class="lancamento-linha">Comissão líquida Ritmo (após IRFF da Genial): ${formatarMoeda(item.valorEscritorio * 2)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Parte da Ritmo (50%): ${formatarMoeda(item.valorEscritorio)}</div>`);
   }
   return linhas.join('');
 }
@@ -1167,7 +1194,7 @@ async function importarRepasseGenial(event) {
         }
 
         const tipoProdutoPlanilha = String(linha["TIPO PRODUTO"] || "").trim();
-        const produto = PRODUTOS_GENIAL_TODOS.includes(tipoProdutoPlanilha) ? tipoProdutoPlanilha : PRODUTO_REPASSE_IMPORTADO;
+        const produto = identificarProdutoGenial(tipoProdutoPlanilha) || PRODUTO_REPASSE_IMPORTADO;
 
         const nomeFuncionario = MAPEAMENTO_REPASSE_GENIAL[encontrado.chave];
         const chaveFuncionario = normalizarNome(nomeFuncionario);
