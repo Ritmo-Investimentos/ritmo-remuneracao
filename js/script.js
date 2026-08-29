@@ -722,13 +722,16 @@ function construirLinhasVenda(item) {
     linhas.push(`<div class="lancamento-linha">Imposto: ${formatarPercentual(item.impostoPercentualPlanilha)}</div>`);
     linhas.push(`<div class="lancamento-linha">Valor Líquido: ${formatarMoedaColorida(item.valorLiquidoPlanilhaFinal)}</div>`);
   } else if (PRODUTOS_GENIAL_TODOS.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
-    if (item.valorBrutoPlanilha !== undefined) {
-      linhas.push(`<div class="lancamento-linha">Valor bruto (Genial): ${formatarMoeda(item.valorBrutoPlanilha)}</div>`);
-      linhas.push(`<div class="lancamento-linha">Imposto (Genial): ${formatarMoeda(item.impostoPlanilha)}</div>`);
+    if (item.receitaBrutaPlanilha !== undefined) {
+      linhas.push(`<div class="lancamento-linha">Receita Bruta: ${formatarMoedaColorida(item.receitaBrutaPlanilha)}</div>`);
     }
-    linhas.push(`<div class="lancamento-linha">Comissão Assessor: ${formatarMoeda(item.valorPrincipal)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Comissão líquida Ritmo (após IRFF da Genial): ${formatarMoeda(item.valorEscritorio * 2)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Parte da Ritmo (50%): ${formatarMoeda(item.valorEscritorio)}</div>`);
+    if (item.valorBrutoPlanilha !== undefined) {
+      linhas.push(`<div class="lancamento-linha">Comissão Bruta: ${formatarMoedaColorida(item.valorBrutoPlanilha)}</div>`);
+      linhas.push(`<div class="lancamento-linha">Imposto: ${formatarMoedaColorida(-item.impostoPlanilha)}</div>`);
+    }
+    linhas.push(`<div class="lancamento-linha">Comissão Líquida (Genial): ${formatarMoedaColorida(item.valorPrincipal)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Comissão líquida Ritmo (após IRFF de 1,5%/6,65%): ${formatarMoedaColorida(item.valorEscritorio * 2)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Parte da Ritmo (50%): ${formatarMoedaColorida(item.valorEscritorio)}</div>`);
   }
   return linhas.join('');
 }
@@ -1201,7 +1204,7 @@ async function importarRepasseGenial(event) {
         const chaveProduto = `${competencia}|${produto}`;
 
         if (!totaisPorFuncionario[chaveFuncionario]) totaisPorFuncionario[chaveFuncionario] = { nome: nomeFuncionario, produtos: {} };
-        const acumulado = totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] || { comissao: 0, bruto: 0, imposto: 0, valorLiquidoFinal: 0 };
+        const acumulado = totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] || { comissao: 0, bruto: 0, imposto: 0, valorLiquidoFinal: 0, receitaBruta: 0 };
 
         if (formatoNovo) {
           acumulado.bruto += Number(linha["VALOR BRUTO"]) || 0;
@@ -1220,6 +1223,9 @@ async function importarRepasseGenial(event) {
             acumulado.bruto += Number(linha["VALOR BRUTO AAI"]) || 0;
             acumulado.imposto += Number(linha["IMPOSTO"]) || 0;
           }
+          if (linha["RECEITA GENIAL (*)"] !== undefined) {
+            acumulado.receitaBruta += Number(linha["RECEITA GENIAL (*)"]) || 0;
+          }
         }
         totaisPorFuncionario[chaveFuncionario].produtos[chaveProduto] = acumulado;
       }
@@ -1236,7 +1242,7 @@ async function importarRepasseGenial(event) {
 
         for (const chaveProduto in produtos) {
           const [competencia, produto] = chaveProduto.split("|");
-          const { comissao, bruto, imposto, valorLiquidoFinal } = produtos[chaveProduto];
+          const { comissao, bruto, imposto, valorLiquidoFinal, receitaBruta } = produtos[chaveProduto];
           let dadosVenda;
 
           if (formatoNovo) {
@@ -1261,6 +1267,9 @@ async function importarRepasseGenial(event) {
             if (temColunasBrutoImposto) {
               dadosVenda.valorBrutoPlanilha = bruto;
               dadosVenda.impostoPlanilha = imposto;
+            }
+            if (receitaBruta) {
+              dadosVenda.receitaBrutaPlanilha = receitaBruta;
             }
           }
 
