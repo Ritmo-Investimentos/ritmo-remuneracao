@@ -694,7 +694,7 @@ function construirTituloVenda(item) {
   if (item.produto === 'Fundos') return `📊 Fundos`;
   if (item.produto === PRODUTO_REPASSE_IMPORTADO) return `📥 Repasse Genial (Importado)`;
   if (PRODUTOS_GENIAL_DEDUCAO.includes(item.produto)) return `💸 ${item.produto} (Dedução)`;
-  if (PRODUTOS_GENIAL.includes(item.produto)) return `📈 ${item.produto} (Genial)`;
+  if (PRODUTOS_GENIAL.includes(item.produto)) return `📈 ${item.produto}`;
   return item.produto;
 }
 
@@ -720,16 +720,7 @@ function construirLinhasVenda(item) {
     linhas.push(`<div class="lancamento-linha">Imposto: ${formatarPercentual(item.impostoPercentualPlanilha)}</div>`);
     linhas.push(`<div class="lancamento-linha">Valor Líquido: ${formatarMoedaColorida(item.valorLiquidoPlanilhaFinal)}</div>`);
   } else if (PRODUTOS_GENIAL_TODOS.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
-    if (item.receitaBrutaPlanilha !== undefined) {
-      linhas.push(`<div class="lancamento-linha">Receita Bruta: ${formatarMoedaColorida(item.receitaBrutaPlanilha)}</div>`);
-    }
-    if (item.valorBrutoPlanilha !== undefined) {
-      linhas.push(`<div class="lancamento-linha">Comissão Bruta: ${formatarMoedaColorida(item.valorBrutoPlanilha)}</div>`);
-      linhas.push(`<div class="lancamento-linha">Imposto: ${formatarMoedaColorida(-item.impostoPlanilha)}</div>`);
-    }
-    linhas.push(`<div class="lancamento-linha">Comissão Líquida (Genial): ${formatarMoedaColorida(item.valorPrincipal)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Comissão líquida Ritmo (após IRFF de 1,5%): ${formatarMoedaColorida(item.valorEscritorio * 2)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Parte da Ritmo (50%): ${formatarMoedaColorida(item.valorEscritorio)}</div>`);
+    // Sem detalhamento intermediário aqui — só o título e o "Valor líquido" (linha genérica abaixo).
   }
   return linhas.join('');
 }
