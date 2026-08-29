@@ -607,7 +607,7 @@ async function renderizarPainel() {
               ${botoesAdmin}
             </div>
             ${linhas}
-            ${item.valorLiquidoPlanilhaFinal === undefined ? `<div class="lancamento-liquido">Valor líquido: ${formatarMoeda(item.valorLiquido)}</div>` : ''}
+            ${item.valorLiquidoPlanilhaFinal === undefined ? `<div class="lancamento-liquido">Valor líquido: ${formatarMoedaColorida(item.valorLiquido)}</div>` : ''}
           </div>
         `;
       } else { // É uma passagem
@@ -670,7 +670,7 @@ async function renderizarPainel() {
               ${funcionario.nome} ${seloPiso} ${seloExcluido}
               <div class="card-cargo">${cargoLabel}</div>
             </span>
-            <span class="total-mes">${formatarMoeda(totalAssessorMes)}</span>
+            <span class="total-mes">${formatarMoedaColorida(totalAssessorMes)}</span>
           </h3>
         </div>
         <div class="detalhes-funcionario-painel" id="detalhes-funcionario-${funcionario.id}" onclick="event.stopPropagation()">
@@ -683,7 +683,7 @@ async function renderizarPainel() {
   }
 
   listaFuncionariosPainel.innerHTML = htmlFuncionarios;
-  totalGeralPainel.innerHTML = `Total Geral (${filtroMes ? formatarCompetencia(filtroMes) : "Todos os períodos"}): ${formatarMoeda(totalGeral)}`;
+  totalGeralPainel.innerHTML = `Total Geral (${filtroMes ? formatarCompetencia(filtroMes) : "Todos os períodos"}): ${formatarMoedaColorida(totalGeral)}`;
 }
 
 // ---- Helpers de exibição de venda ----
@@ -1400,16 +1400,16 @@ async function renderizarSimulacao() {
   for (const venda of vendasCalculadas) {
     html += `
       <div class="item-remuneracao">
-        <h4>${venda.produto} - ${formatarMoeda(venda.valorLiquido)}</h4>
+        <h4>${venda.produto} - ${formatarMoedaColorida(venda.valorLiquido)}</h4>
         <div class="detalhe-expandido ativo">
-          Valor/Prêmio: ${formatarMoeda(venda.valorPrincipal)}<br>
+          Valor/Prêmio: ${formatarMoedaColorida(venda.valorPrincipal)}<br>
           Detalhe: ${venda.detalheProduto}<br>
-          Repasse Escritório: ${formatarMoeda(venda.valorEscritorio)}
+          Repasse Escritório: ${formatarMoedaColorida(venda.valorEscritorio)}
         </div>
       </div>
     `;
   }
-  html += `<div class="total-geral">Total Simulado: ${formatarMoeda(totalAssessorMes)}</div>`;
+  html += `<div class="total-geral">Total Simulado: ${formatarMoedaColorida(totalAssessorMes)}</div>`;
   resultadoEl.innerHTML = html;
 }
 
@@ -1719,7 +1719,7 @@ async function exportarFuncionarioPDF() {
   const todosVendas = await promisify(tx("vendas").getAll()); // Para o cálculo Azos
   const { totalAssessorMes, totalVariavelMes, aplicouPiso, vendasCalculadas, passagensCalculadas } = await calcularRemuneracaoMensal(funcionario, competenciaFiltro || competenciaAtualDoSistema(), todosVendas, passagens);
 
-  const linhasVendasArr = vendasCalculadas.map(v => `<tr><td>${formatarCompetencia(v.competencia)}</td><td>${v.produto}</td><td>${formatarMoeda(v.valorPrincipal)}</td><td>${v.detalheProduto}</td><td>${formatarMoeda(v.valorEscritorio)}</td><td>${formatarMoeda(v.valorLiquido)}</td></tr>`);
+  const linhasVendasArr = vendasCalculadas.map(v => `<tr><td>${formatarCompetencia(v.competencia)}</td><td>${v.produto}</td><td>${formatarMoedaColorida(v.valorPrincipal)}</td><td>${v.detalheProduto}</td><td>${formatarMoedaColorida(v.valorEscritorio)}</td><td>${formatarMoedaColorida(v.valorLiquido)}</td></tr>`);
   const linhasPassagensArr = passagensCalculadas.map(p => `<tr><td>${formatarCompetencia(p.competencia)}</td><td>Passagem ${p.tipo}</td><td>${p.quantidade}x ${formatarMoeda(p.valorUnitario)}</td><td></td><td></td><td>${formatarMoeda(p.valorTotal)}</td></tr>`);
 
   const linhas = [...linhasVendasArr, ...linhasPassagensArr].join("");
@@ -1729,7 +1729,7 @@ async function exportarFuncionarioPDF() {
   const notaPiso = funcionario.tipo !== "sdr" ? `<p class="status">Observação: o total pago pode ser maior que a soma variável acima, pois o assessor tem piso mensal garantido de R$ ${formatarMoeda(PISO_MENSAL_ASSESSOR).replace("R$", "")} quando o variável do mês não atinge esse valor.</p>` : "";
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório - ${funcionario.nome}</title>
-    <style>* { box-sizing:border-box; } body { margin:0; font-family:Arial, sans-serif; color:#111827; } .relatorio-pdf { padding:30px; } h1 { text-align:center; color:#5b21b6; } h2 { color:#5b21b6; border-bottom:2px solid #7c3aed; padding-bottom:8px; } table { width:100%; border-collapse:collapse; } th, td { border:1px solid #ddd; padding:6px; font-size:10px; } th { background:#f3effc; } .totais { margin-top:20px; padding:14px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; } .botao-imprimir { text-align:center; margin:20px 0; } @media print { .botao-imprimir { display:none; } }</style>
+    <style>* { box-sizing:border-box; } body { margin:0; font-family:Arial, sans-serif; color:#111827; } .relatorio-pdf { padding:30px; } h1 { text-align:center; color:#5b21b6; } h2 { color:#5b21b6; border-bottom:2px solid #7c3aed; padding-bottom:8px; } table { width:100%; border-collapse:collapse; } th, td { border:1px solid #ddd; padding:6px; font-size:10px; } th { background:#f3effc; } .totais { margin-top:20px; padding:14px; background:#f0fdf4; border:1px solid #86efac; border-radius:8px; } .botao-imprimir { text-align:center; margin:20px 0; } @media print { .botao-imprimir { display:none; } } .valor-negativo { color:#dc2626; font-weight:700; }</style>
     </head><body>
     <div class="botao-imprimir"><button onclick="window.print()">Imprimir / Salvar PDF</button></div>
     <main class="relatorio-pdf">
@@ -1737,7 +1737,7 @@ async function exportarFuncionarioPDF() {
       <p><strong>Colaborador:</strong> ${funcionario.nome}${funcionario.tipo === "sdr" ? " (SDR)" : ""}${funcionario.mesExclusao ? ` (Excluído em ${formatarCompetencia(funcionario.mesExclusao)})` : ""}<br><strong>Período:</strong> ${periodoTexto}<br><strong>Emitido em:</strong> ${dataAtual}</p>
       <h2>Detalhes</h2>
       ${(vendas.length || passagens.length) ? `<table><thead><tr><th>Mês</th><th>Item</th><th>Valor/Prêmio</th><th>Detalhe</th><th>Escritório</th><th>Líquido</th></tr></thead><tbody>${linhas}</tbody></table>` : "<p>Nenhum item no período.</p>"}
-      <div class="totais"><strong>Total líquido: ${formatarMoeda(totalAssessorMes)}</strong><br>Total variável bruto: ${formatarMoeda(totalVariavelMes)}</div>
+      <div class="totais"><strong>Total líquido: ${formatarMoedaColorida(totalAssessorMes)}</strong><br>Total variável bruto: ${formatarMoedaColorida(totalVariavelMes)}</div>
       ${notaPiso}
     </main></body></html>`;
 
