@@ -232,6 +232,11 @@ function formatarPercentual(valor) {
   return `${(valor * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
+function toggleSidebar() {
+  const fechada = document.getElementById("app-shell").classList.toggle("sidebar-fechada");
+  localStorage.setItem("sidebarFechada", fechada);
+}
+
 function formatarCompetencia(competencia) {
   if (!competencia) return "N/A";
   const [ano, mes] = competencia.split("-");
@@ -301,6 +306,7 @@ async function verificarSessao() {
   if (usuarioLogado) {
     document.getElementById("tela-login").style.display = "none";
     document.getElementById("app-shell").style.display = "flex";
+    document.getElementById("app-shell").classList.toggle("sidebar-fechada", localStorage.getItem("sidebarFechada") === "true");
     document.getElementById("texto-usuario-logado").textContent = `Logado como: ${usuarioLogado.nome} (${usuarioLogado.tipo})`;
     await renderizarMenu();
     mudarAba("view-painel"); // Garante que a primeira aba seja exibida
