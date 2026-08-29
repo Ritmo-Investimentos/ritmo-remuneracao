@@ -47,8 +47,7 @@ let simulacaoAtual = [];
 const PISO_MENSAL_ASSESSOR = 2000;
 const VALOR_FIXO_SDR = 2000;
 const IMPOSTO_REPASSE_GENIAL = 0.1903; // 19,03% sobre a parte do escritório no repasse da Genial
-const IRFF_GENIAL_NORMAL = 0.015; // 1,5% de IRFF retido pela Genial (fase 1) em produtos normais
-const IRFF_GENIAL_DEDUCAO = 0.0665; // 6,65% de IRFF retido pela Genial em Custo de Plataforma/Taxa de Performance
+const IRFF_GENIAL_NORMAL = 0.015; // 1,5% de IRFF retido pela Genial (fase 1), igual para todos os produtos
 
 let configPassagem = {
   metro: 7.90,
@@ -421,14 +420,13 @@ async function calcularRemuneracaoVenda(venda, todasVendasDoMes = []) {
     valorLiquido = venda.valorLiquidoPlanilhaFinal;
   } else if (PRODUTOS_GENIAL_TODOS.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
     // Repasse da Genial em 2 fases:
-    // Fase 1 (Genial -> Ritmo): a Genial retém IRFF sobre a comissão bruta de cada
-    // produto (1,5% nos produtos normais, 6,65% em Custo de Plataforma/Taxa de
-    // Performance) e repassa o líquido à Ritmo.
+    // Fase 1 (Genial -> Ritmo): a Genial retém 1,5% de IRFF sobre a comissão líquida
+    // de cada produto (mesma alíquota para todos, inclusive Custo de Plataforma/Taxa
+    // de Performance) e repassa o líquido à Ritmo.
     // Fase 2 (Ritmo -> assessor): a Ritmo fica com 50% dessa comissão líquida,
     // desconta 19,03% de imposto sobre a sua parte e paga o assessor — sempre,
     // independente do sinal (produtos negativos reduzem o total normalmente).
-    const taxaIrffGenial = PRODUTOS_GENIAL_DEDUCAO.includes(venda.produto) ? IRFF_GENIAL_DEDUCAO : IRFF_GENIAL_NORMAL;
-    const comissaoLiquidaRitmo = venda.comissaoAssessor * (1 - taxaIrffGenial);
+    const comissaoLiquidaRitmo = venda.comissaoAssessor * (1 - IRFF_GENIAL_NORMAL);
     valorPrincipal = venda.comissaoAssessor;
     detalheProduto = venda.origem === "genial-import" ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
     valorEscritorio = comissaoLiquidaRitmo / 2;
@@ -730,7 +728,7 @@ function construirLinhasVenda(item) {
       linhas.push(`<div class="lancamento-linha">Imposto: ${formatarMoedaColorida(-item.impostoPlanilha)}</div>`);
     }
     linhas.push(`<div class="lancamento-linha">Comissão Líquida (Genial): ${formatarMoedaColorida(item.valorPrincipal)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Comissão líquida Ritmo (após IRFF de 1,5%/6,65%): ${formatarMoedaColorida(item.valorEscritorio * 2)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Comissão líquida Ritmo (após IRFF de 1,5%): ${formatarMoedaColorida(item.valorEscritorio * 2)}</div>`);
     linhas.push(`<div class="lancamento-linha">Parte da Ritmo (50%): ${formatarMoedaColorida(item.valorEscritorio)}</div>`);
   }
   return linhas.join('');
