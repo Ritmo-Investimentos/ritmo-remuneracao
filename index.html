@@ -364,6 +364,16 @@
     <section id="view-importar-exportar" class="view">
       <div class="topbar"><h1>📥 Importar e Exportar</h1></div>
       <div class="card">
+        <h2>Dados (Excel)</h2>
+        <p class="status">Exporta todos os dados da aplicação em um único arquivo .xlsx (Equipe, Remuneração de todos os meses, Passagens, Aprovações e Usuários). Importar substitui totalmente os dados atuais pelos do arquivo.</p>
+        <div class="form-row">
+          <button onclick="exportarDadosExcel()">Exportar Dados (.xlsx)</button>
+        </div>
+        <div class="form-row">
+          <div><label>Importar Dados</label><input type="file" id="input-importar-dados" accept=".xlsx,.xls" onchange="importarDadosExcel(event)"></div>
+        </div>
+      </div>
+      <div class="card">
         <h2>Backup (JSON)</h2>
         <div class="form-row">
           <button onclick="exportarBackup()">Exportar Backup (JSON)</button>

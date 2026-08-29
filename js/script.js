@@ -1777,10 +1777,13 @@ function importarBackup(event) {
       for (const nome of ["funcionarios","vendas","usuarios","passagens","configuracoes"]) {
         await promisify(tx(nome, "readwrite").clear());
       }
-      for (const f of backup.funcionarios || []) { const { id, ...rest } = f; await promisify(tx("funcionarios","readwrite").add(rest)); }
-      for (const v of backup.vendas || []) { const { id, ...rest } = v; await promisify(tx("vendas","readwrite").add(rest)); }
-      for (const u of backup.usuarios || []) { const { id, ...rest } = u; await promisify(tx("usuarios","readwrite").add(rest)); }
-      for (const p of backup.passagens || []) { const { id, ...rest } = p; await promisify(tx("passagens","readwrite").add(rest)); }
+      // Mantém o id original de cada documento (via put), preservando as referências
+      // cruzadas entre coleções (venda.funcionarioId, usuario.funcionarioId etc.) —
+      // usar add() aqui geraria ids novos e quebraria esses vínculos.
+      for (const f of backup.funcionarios || []) { await promisify(tx("funcionarios","readwrite").put(f)); }
+      for (const v of backup.vendas || []) { await promisify(tx("vendas","readwrite").put(v)); }
+      for (const u of backup.usuarios || []) { await promisify(tx("usuarios","readwrite").put(u)); }
+      for (const p of backup.passagens || []) { await promisify(tx("passagens","readwrite").put(p)); }
       for (const c of backup.configuracoes || []) { await promisify(tx("configuracoes","readwrite").add(c)); }
 
       alert("Backup importado! Recarregando...");
@@ -1789,6 +1792,87 @@ function importarBackup(event) {
     } catch (err) { alert("Arquivo inválido."); console.error(err); }
   };
   reader.readAsText(file);
+  event.target.value = "";
+}
+
+// ---- Exportação/importação completa em Excel (.xlsx) ----
+const ABAS_DADOS_EXCEL = {
+  "Equipe": "funcionarios",
+  "Remuneração": "vendas",
+  "Passagens": "passagens",
+  "Aprovações": "aprovacoes",
+  "Usuários": "usuarios"
+};
+
+// Calcula o cabeçalho como a união de todas as chaves usadas em qualquer item da
+// lista (registros de venda têm campos diferentes conforme o produto), sempre com
+// "id" na primeira coluna.
+function cabecalhoUniao(lista) {
+  const header = ["id"];
+  for (const item of lista) {
+    for (const chave in item) {
+      if (chave !== "id" && !header.includes(chave)) header.push(chave);
+    }
+  }
+  return header;
+}
+
+async function exportarDadosExcel() {
+  const wb = XLSX.utils.book_new();
+  for (const nomeAba in ABAS_DADOS_EXCEL) {
+    const lista = await promisify(tx(ABAS_DADOS_EXCEL[nomeAba]).getAll());
+    const sheet = XLSX.utils.json_to_sheet(lista, { header: cabecalhoUniao(lista) });
+    XLSX.utils.book_append_sheet(wb, sheet, nomeAba);
+  }
+  XLSX.writeFile(wb, `dados-ritmo-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
+async function importarDadosExcel(event) {
+  const arquivo = event.target.files[0];
+  if (!arquivo) return;
+
+  const leitor = new FileReader();
+  leitor.onload = async function (e) {
+    try {
+      const dados = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(dados, { type: "array" });
+
+      const registrosPorColecao = {};
+      for (const nomeAba in ABAS_DADOS_EXCEL) {
+        const sheet = workbook.Sheets[nomeAba];
+        registrosPorColecao[ABAS_DADOS_EXCEL[nomeAba]] = sheet ? XLSX.utils.sheet_to_json(sheet) : [];
+      }
+
+      if (!confirm("Isso substitui todos os dados atuais (Equipe, Remuneração, Passagens, Aprovações e Usuários) pelos do arquivo. Continuar?")) {
+        event.target.value = "";
+        return;
+      }
+
+      for (const colecao of Object.values(ABAS_DADOS_EXCEL)) {
+        await promisify(tx(colecao, "readwrite").clear());
+      }
+      // Preserva o id original de cada linha (via put) para manter as referências
+      // cruzadas entre abas (ex.: funcionarioId em Remuneração/Passagens/Usuários).
+      for (const colecao in registrosPorColecao) {
+        for (const item of registrosPorColecao[colecao]) {
+          if (item.id === undefined || item.id === "") {
+            const { id, ...resto } = item;
+            await promisify(tx(colecao, "readwrite").add(resto));
+          } else {
+            await promisify(tx(colecao, "readwrite").put({ ...item, id: String(item.id) }));
+          }
+        }
+      }
+
+      alert("Dados importados com sucesso! Recarregando...");
+      sessionStorage.removeItem("usuarioLogadoId");
+      location.reload();
+    } catch (err) {
+      console.error("Erro ao importar dados:", err);
+      alert("Erro ao processar o arquivo. Confira se é um arquivo exportado por este sistema (use \"Exportar Dados (.xlsx)\").");
+    }
+  };
+  leitor.readAsArrayBuffer(arquivo);
   event.target.value = "";
 }
 
