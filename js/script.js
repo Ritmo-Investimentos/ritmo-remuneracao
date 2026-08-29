@@ -1468,6 +1468,54 @@ async function alterarSenhaUsuario(usuarioId) {
   usuario.senha = novaSenha;
   await promisify(tx("usuarios", "readwrite").put(usuario));
   alert("Senha atualizada.");
+  await renderizarAssessoresTab();
+}
+
+async function alterarNomeUsuario(usuarioId, funcionarioId) {
+  const usuario = await promisify(tx("usuarios").get(usuarioId));
+  const novoNome = prompt("Digite o novo nome:", usuario.nome);
+  if (!novoNome || !novoNome.trim()) return;
+  const nome = novoNome.trim();
+
+  usuario.nome = nome;
+  await promisify(tx("usuarios", "readwrite").put(usuario));
+
+  if (funcionarioId) {
+    const funcionario = await promisify(tx("funcionarios").get(funcionarioId));
+    if (funcionario) {
+      funcionario.nome = nome;
+      await promisify(tx("funcionarios", "readwrite").put(funcionario));
+    }
+  }
+
+  alert("Nome atualizado.");
+  await renderizarAssessoresTab();
+  await renderizarPainel();
+}
+
+async function alterarLoginUsuario(usuarioId) {
+  const usuario = await promisify(tx("usuarios").get(usuarioId));
+  const novoLogin = prompt("Digite o novo login:", usuario.login);
+  if (!novoLogin || !novoLogin.trim()) return;
+  const login = novoLogin.trim();
+
+  const usuarios = await promisify(tx("usuarios").getAll());
+  if (usuarios.some(u => u.id !== usuarioId && u.login.toLowerCase() === login.toLowerCase())) {
+    alert("Este login já está em uso.");
+    return;
+  }
+
+  usuario.login = login;
+  await promisify(tx("usuarios", "readwrite").put(usuario));
+  alert("Login atualizado.");
+  await renderizarAssessoresTab();
+}
+
+const senhasVisiveis = new Set();
+function alternarSenhaVisivel(usuarioId) {
+  if (senhasVisiveis.has(usuarioId)) senhasVisiveis.delete(usuarioId);
+  else senhasVisiveis.add(usuarioId);
+  renderizarAssessoresTab();
 }
 
 async function excluirColaborador(usuarioId, funcionarioId) {
@@ -1541,10 +1589,18 @@ async function renderizarAssessoresTab() {
       }
     }
 
+    const senhaVisivel = senhasVisiveis.has(u.id);
     return `
       <tr>
-        <td>${u.nome}</td><td>${u.login}</td><td>${rotuloFuncao}</td>
-        <td><button class="btn-editar" onclick="alterarSenhaUsuario('${u.id}')">Alterar senha</button> ${acoesHtml}</td>
+        <td>${u.nome}</td><td>${u.login}</td>
+        <td>${senhaVisivel ? u.senha : '••••••••'} <button class="link-discreto" onclick="alternarSenhaVisivel('${u.id}')">${senhaVisivel ? 'Ocultar' : 'Mostrar'}</button></td>
+        <td>${rotuloFuncao}</td>
+        <td>
+          <button class="btn-editar" onclick="alterarNomeUsuario('${u.id}','${u.funcionarioId || ''}')">Alterar nome</button>
+          <button class="btn-editar" onclick="alterarLoginUsuario('${u.id}')">Alterar login</button>
+          <button class="btn-editar" onclick="alterarSenhaUsuario('${u.id}')">Alterar senha</button>
+          ${acoesHtml}
+        </td>
       </tr>`;
   }).join("");
 }
