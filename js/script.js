@@ -47,6 +47,8 @@ let simulacaoAtual = [];
 const PISO_MENSAL_ASSESSOR = 2000;
 const VALOR_FIXO_SDR = 2000;
 const IMPOSTO_REPASSE_GENIAL = 0.1903; // 19,03% sobre a parte do escritório no repasse da Genial
+const IRFF_GENIAL_NORMAL = 0.015; // 1,5% de IRFF retido pela Genial (fase 1) em produtos normais
+const IRFF_GENIAL_DEDUCAO = 0.0665; // 6,65% de IRFF retido pela Genial em Custo de Plataforma/Taxa de Performance
 
 let configPassagem = {
   metro: 7.90,
@@ -392,15 +394,19 @@ async function calcularRemuneracaoVenda(venda, todasVendasDoMes = []) {
     valorEscritorio = venda.valorBrutoPlanilha;
     valorLiquido = venda.valorLiquidoPlanilhaFinal;
   } else if (PRODUTOS_GENIAL_TODOS.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
-    // Valor já vem com o sinal certo (positivo = receita, negativo = Custo de
-    // Plataforma/Taxa de Performance). O rateio ÷2 e o imposto de 19,03% são
-    // calculados de forma agregada no mês por calcularRemuneracaoMensal (que também
-    // aplica a regra de manter o valor bruto quando o total do mês é negativo);
-    // aqui fica apenas um cálculo de referência para uso isolado, como na Calculadora.
+    // Repasse da Genial em 2 fases:
+    // Fase 1 (Genial -> Ritmo): a Genial retém IRFF sobre a comissão bruta de cada
+    // produto (1,5% nos produtos normais, 6,65% em Custo de Plataforma/Taxa de
+    // Performance) e repassa o líquido à Ritmo.
+    // Fase 2 (Ritmo -> assessor): a Ritmo fica com 50% dessa comissão líquida,
+    // desconta 19,03% de imposto sobre a sua parte e paga o assessor — sempre,
+    // independente do sinal (produtos negativos reduzem o total normalmente).
+    const taxaIrffGenial = PRODUTOS_GENIAL_DEDUCAO.includes(venda.produto) ? IRFF_GENIAL_DEDUCAO : IRFF_GENIAL_NORMAL;
+    const comissaoLiquidaRitmo = venda.comissaoAssessor * (1 - taxaIrffGenial);
     valorPrincipal = venda.comissaoAssessor;
     detalheProduto = venda.origem === "genial-import" ? "Importado da planilha da Genial" : `Tipo: ${venda.produto}`;
-    valorEscritorio = venda.comissaoAssessor / 2;
-    valorLiquido = venda.comissaoAssessor >= 0 ? (valorEscritorio * (1 - IMPOSTO_REPASSE_GENIAL)) : venda.comissaoAssessor;
+    valorEscritorio = comissaoLiquidaRitmo / 2;
+    valorLiquido = valorEscritorio * (1 - IMPOSTO_REPASSE_GENIAL);
   } else { // Renda Fixa, Fundos
     valorPrincipal = venda.valor;
     percentualAssessor = venda.percentualTitulo / 2; // 50% do percentual do título
@@ -457,25 +463,13 @@ async function calcularRemuneracaoMensal(funcionario, competencia, todasVendas, 
   // Calcular o total de prêmios Azos do assessor no mês
   const totalPremiosAzosAssessor = vendasDoMes.filter(v => v.produto === "Seguro" && v.seguradora === "Azos").reduce((sum, v) => sum + v.premio, 0);
 
-  // Repasse da Genial: soma todos os produtos do mês (receita soma, Custo de Plataforma/Taxa
-  // de Performance descontam, com o sinal que já vem da planilha). Se o total do mês for
-  // positivo, divide por 2 e desconta 19,03% de imposto; se for negativo, mantém o valor bruto
-  // (sem dividir/descontar imposto sobre prejuízo). O resultado é distribuído proporcionalmente
-  // entre os lançamentos do mês (mesma lógica de rateio já usada para o agenciamento Azos).
-  // Lançamentos do extrato novo (com valorLiquidoPlanilhaFinal) já vêm com o líquido
-  // final calculado linha a linha e não entram nesse rateio agregado.
-  const isVendaGenial = v => (PRODUTOS_GENIAL_TODOS.includes(v.produto) || v.produto === PRODUTO_REPASSE_IMPORTADO) && v.valorLiquidoPlanilhaFinal === undefined;
-  const vendasGenialDoMes = vendasDoMes.filter(isVendaGenial);
-  const totalBrutoGenialMes = vendasGenialDoMes.reduce((sum, v) => sum + (v.comissaoAssessor || 0), 0);
-  const liquidoGenialMes = totalBrutoGenialMes >= 0
-    ? (totalBrutoGenialMes / 2) * (1 - IMPOSTO_REPASSE_GENIAL)
-    : totalBrutoGenialMes;
-  const proporcaoLiquidoGenial = totalBrutoGenialMes !== 0 ? (liquidoGenialMes / totalBrutoGenialMes) : 0;
-
+  // Repasse da Genial: cada lançamento (por produto/mês) já calcula seu próprio líquido
+  // final em calcularRemuneracaoVenda (fase 1: IRFF da Genial; fase 2: ÷2 e 19,03% da
+  // Ritmo), então soma direto, sem rateio agregado.
   for (const venda of vendasDoMes) {
     const { valorPrincipal, detalheProduto, valorEscritorio, valorLiquido } = await calcularRemuneracaoVenda(venda, todasVendas);
 
-    let valorLiquidoFinalVenda = valorLiquido; // Começa com a recorrência para Azos ou 50% para outros
+    let valorLiquidoFinalVenda = valorLiquido; // Começa com a recorrência para Azos ou o líquido já calculado para os demais
 
     if (venda.produto === "Seguro" && venda.seguradora === "Azos") {
       // Adicionar a parte proporcional do agenciamento Azos
@@ -483,9 +477,6 @@ async function calcularRemuneracaoMensal(funcionario, competencia, todasVendas, 
         const proporcaoAssessor = totalPremiosAzosAssessor > 0 ? (venda.premio / totalPremiosAzosAssessor) : 0;
         valorLiquidoFinalVenda += agenciamentoAzosParaAssessores * proporcaoAssessor;
       }
-    } else if (isVendaGenial(venda)) {
-      // Substitui o cálculo isolado da venda pelo rateio do resultado agregado do mês.
-      valorLiquidoFinalVenda = venda.comissaoAssessor * proporcaoLiquidoGenial;
     }
 
     totalVariavelBruto += valorLiquidoFinalVenda;
@@ -512,9 +503,7 @@ async function calcularRemuneracaoMensal(funcionario, competencia, todasVendas, 
     totalVariavelMes: totalVariavelBruto,
     aplicouPiso,
     vendasCalculadas,
-    passagensCalculadas,
-    totalBrutoGenialMes,
-    liquidoGenialMes
+    passagensCalculadas
   };
 }
 
@@ -548,7 +537,7 @@ async function renderizarPainel() {
   });
 
   for (const funcionario of funcionariosAtivos) {
-    const { totalAssessorMes, totalVariavelMes, aplicouPiso, vendasCalculadas, passagensCalculadas, totalBrutoGenialMes, liquidoGenialMes } = await calcularRemuneracaoMensal(funcionario, filtroMes || competenciaAtualDoSistema(), todosVendas, todasPassagens);
+    const { totalAssessorMes, totalVariavelMes, aplicouPiso, vendasCalculadas, passagensCalculadas } = await calcularRemuneracaoMensal(funcionario, filtroMes || competenciaAtualDoSistema(), todosVendas, todasPassagens);
 
     totalGeral += totalAssessorMes;
 
@@ -573,20 +562,6 @@ async function renderizarPainel() {
     const botaoLimparMes = (isAdmin && filtroMes && (vendasCalculadas.length > 0 || passagensCalculadas.length > 0))
       ? `<div class="acoes-mes"><button class="btn-remover" onclick="limparLancamentosDoMes('${funcionario.id}','${filtroMes}')">🗑️ Excluir todos os lançamentos de ${formatarCompetencia(filtroMes)}</button></div>`
       : '';
-
-    let resumoGenialHtml = '';
-    if (totalBrutoGenialMes !== 0) {
-      const regraAplicada = totalBrutoGenialMes >= 0
-        ? `${formatarMoeda(totalBrutoGenialMes)} ÷ 2 = ${formatarMoeda(totalBrutoGenialMes / 2)} − imposto (19,03%)`
-        : `valor bruto negativo — imposto não é aplicado sobre prejuízo`;
-      resumoGenialHtml = `
-        <div class="regra-bloco" style="margin-top:10px;">
-          <span class="regra-tag">📥 Resumo do repasse Genial do mês</span>
-          <p>Valor bruto (todos os produtos, com desconto de Custo de Plataforma/Taxa de Performance): <strong>${formatarMoeda(totalBrutoGenialMes)}</strong></p>
-          <p class="status">${regraAplicada}</p>
-          <p>Líquido do repasse Genial: <strong>${formatarMoeda(liquidoGenialMes)}</strong></p>
-        </div>`;
-    }
 
     const detalhesHtml = [...vendasCalculadas, ...passagensCalculadas].map(item => {
       const tipoItem = item.produto ? 'venda' : 'passagem';
@@ -674,7 +649,6 @@ async function renderizarPainel() {
         </div>
         <div class="detalhes-funcionario-painel" id="detalhes-funcionario-${funcionario.id}" onclick="event.stopPropagation()">
           ${detalhesHtml || '<p class="status">Nenhum lançamento para este período.</p>'}
-          ${resumoGenialHtml}
           ${botaoLimparMes}
           ${blocoAprovacao}
         </div>
