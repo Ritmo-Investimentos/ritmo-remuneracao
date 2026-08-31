@@ -843,7 +843,7 @@ async function abrirModalEdicao(tipo, id) {
     } else if (PRODUTOS_GENIAL_TODOS.includes(venda.produto) || venda.produto === PRODUTO_REPASSE_IMPORTADO) {
       camposEspecificos = `
         <div class="form-row">
-          <div><label>Comissão Líquida (R$)</label><input type="text" class="input-moeda" id="ed-comissao-genial" value="${formatarBR(venda.comissaoAssessor)}"></div>
+          <div><label>Comissão bruta (R$)</label><input type="text" class="input-moeda" id="ed-comissao-genial" value="${formatarBR(venda.comissaoAssessor)}"></div>
         </div>`;
     } else { // Renda Fixa, Fundos
       camposEspecificos = `

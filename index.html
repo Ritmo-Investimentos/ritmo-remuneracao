@@ -123,7 +123,7 @@
           <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps" placeholder="0,00"></div>
         </div>
         <div id="campos-genial" class="form-row" style="display:none;">
-          <div><label>Comissão Líquida (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial" placeholder="0,00"></div>
+          <div><label>Comissão bruta (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial" placeholder="0,00"></div>
         </div>
         <div class="form-row"><button onclick="lancarVenda()">Adicionar Venda</button></div>
       </div>
@@ -228,7 +228,7 @@
           <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps-calc" placeholder="0,00"></div>
         </div>
         <div id="campos-genial-calc" class="form-row" style="display:none;">
-          <div><label>Comissão Líquida (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial-calc" placeholder="0,00"></div>
+          <div><label>Comissão bruta (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial-calc" placeholder="0,00"></div>
         </div>
         <div class="form-row">
           <button onclick="adicionarSimulacao()">Adicionar à simulação</button>
@@ -296,7 +296,7 @@
         <h2>Regras por Produto</h2>
         <div class="regra-bloco">
           <span class="regra-tag">Fundos C.O, Mercado Secundário, CRI/CRA, BTC, Bovespa, Bmf, Debênture, Outros, Taxa de Performance, Custo de Plataforma, Previdência, IPO Bovespa, Clubes (Genial)</span>
-          <p>O repasse desses produtos é calculado em <strong>2 fases</strong>, sempre a partir da <strong>Comissão Líquida da Genial</strong> de cada produto (o valor que a Genial já apura como líquido no relatório dela — a mesma "Comissão Líquida da Genial" da tela de importação/lançamento).</p>
+          <p>O repasse desses produtos é calculado em <strong>2 fases</strong>, sempre a partir do valor que a planilha chama de "Comissão Assessor" (mesmo campo usado na importação e no lançamento manual — na tela de Lançar Repasse aparece como <strong>"Comissão bruta"</strong>, já que é o valor de entrada da fase 2).</p>
           <p><strong>Fase 1 — Genial repassa para a Ritmo:</strong> antes de qualquer cálculo nosso, cada produto já vem com este detalhamento pronto direto do relatório da Genial (exibido na aba Remuneração quando a planilha importada tiver essas colunas):</p>
           <ul>
             <li><strong>Receita Bruta</strong>: receita total gerada por aquele produto naquele mês.</li>
@@ -306,7 +306,7 @@
             <li><strong>Comissão Líquida da Genial</strong>: Comissão Bruta − Imposto — é o valor que efetivamente chega à Ritmo, base de tudo que vem a seguir.</li>
           </ul>
           <p><strong>Fase 2 — Ritmo repassa para o assessor:</strong> sobre o valor que sobrou da fase 1, a Ritmo fica com <strong>50%</strong> e desconta <strong>19,03% de imposto</strong> sobre essa metade — o resultado é o valor líquido pago ao assessor. Essa fase se aplica sempre, inclusive quando o total é negativo (Custo de Plataforma e Taxa de Performance normalmente reduzem o valor do assessor, sem tratamento especial de sinal).</p>
-          <p class="status">Exemplo: um produto com Comissão Líquida da Genial de R$ 1.000,00, importado da planilha → Fase 1: R$ 1.000,00 × (1 − 1,5%) = R$ 985,00. Fase 2: R$ 985,00 ÷ 2 = R$ 492,50; R$ 492,50 × (1 − 19,03%) = <strong>R$ 398,78</strong> ao assessor. Se o mesmo valor fosse lançado manualmente (Comissão Líquida da Genial já pronta), pula a fase 1: R$ 1.000,00 ÷ 2 = R$ 500,00; R$ 500,00 × (1 − 19,03%) = <strong>R$ 404,85</strong> ao assessor.</p>
+          <p class="status">Exemplo: um produto com Comissão Assessor de R$ 1.000,00, importado da planilha → Fase 1: R$ 1.000,00 × (1 − 1,5%) = R$ 985,00. Fase 2: R$ 985,00 ÷ 2 = R$ 492,50; R$ 492,50 × (1 − 19,03%) = <strong>R$ 398,78</strong> ao assessor. Se o mesmo valor fosse lançado manualmente (R$ 1.000,00 digitado como "Comissão bruta" na tela de Lançar Repasse), pula a fase 1: R$ 1.000,00 ÷ 2 = R$ 500,00; R$ 500,00 × (1 − 19,03%) = <strong>R$ 404,85</strong> ao assessor.</p>
         </div>
 
         <div class="regra-bloco">
