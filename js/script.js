@@ -729,7 +729,7 @@ function construirLinhasVenda(item) {
   } else if (item.valorLiquidoPlanilhaFinal !== undefined) {
     linhas.push(`<div class="lancamento-linha">Valor Bruto: ${formatarMoedaColorida(item.valorBrutoPlanilha)}</div>`);
     linhas.push(`<div class="lancamento-linha">Tipo Produto: ${item.produto}</div>`);
-    linhas.push(`<div class="lancamento-linha">Imposto: ${formatarPercentual(item.impostoPercentualPlanilha)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Imposto (da planilha, não é o imposto de 19,03% do escritório): ${formatarPercentual(item.impostoPercentualPlanilha)}</div>`);
     linhas.push(`<div class="lancamento-linha">Valor Líquido: ${formatarMoedaColorida(item.valorLiquidoPlanilhaFinal)}</div>`);
   } else if (PRODUTOS_GENIAL_TODOS.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
     // Nomes propositalmente diferentes dos usados na planilha da Genial, para não

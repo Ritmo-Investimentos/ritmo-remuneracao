@@ -296,17 +296,17 @@
         <h2>Regras por Produto</h2>
         <div class="regra-bloco">
           <span class="regra-tag">Fundos C.O, Mercado Secundário, CRI/CRA, BTC, Bovespa, Bmf, Debênture, Outros, Taxa de Performance, Custo de Plataforma, Previdência, IPO Bovespa, Clubes (Genial)</span>
-          <p>O repasse desses produtos é calculado em <strong>2 fases</strong>, sempre a partir da <strong>Comissão Líquida</strong> de cada produto (o valor que a Genial já apura como líquido no relatório dela — a mesma "Comissão Líquida" da tela de importação/lançamento).</p>
+          <p>O repasse desses produtos é calculado em <strong>2 fases</strong>, sempre a partir da <strong>Comissão Líquida da Genial</strong> de cada produto (o valor que a Genial já apura como líquido no relatório dela — a mesma "Comissão Líquida da Genial" da tela de importação/lançamento).</p>
           <p><strong>Fase 1 — Genial repassa para a Ritmo:</strong> antes de qualquer cálculo nosso, cada produto já vem com este detalhamento pronto direto do relatório da Genial (exibido na aba Remuneração quando a planilha importada tiver essas colunas):</p>
           <ul>
             <li><strong>Receita Bruta</strong>: receita total gerada por aquele produto naquele mês.</li>
             <li><strong>Rebate</strong>: detalhe informativo do relatório da Genial (consultado no Relatório Analítico dela), não entra no cálculo.</li>
             <li><strong>Comissão Bruta</strong>: parte da Receita Bruta que cabe à Ritmo (percentual de repasse varia por produto/linha, definido pela própria Genial).</li>
             <li><strong>Imposto</strong>: retenção de <strong>1,5% de IRFF</strong> que a própria Genial já desconta da Comissão Bruta (mesma alíquota para todos os produtos da lista, inclusive Custo de Plataforma e Taxa de Performance).</li>
-            <li><strong>Comissão Líquida</strong>: Comissão Bruta − Imposto — é o valor que efetivamente chega à Ritmo, base de tudo que vem a seguir.</li>
+            <li><strong>Comissão Líquida da Genial</strong>: Comissão Bruta − Imposto — é o valor que efetivamente chega à Ritmo, base de tudo que vem a seguir.</li>
           </ul>
           <p><strong>Fase 2 — Ritmo repassa para o assessor:</strong> sobre o valor que sobrou da fase 1, a Ritmo fica com <strong>50%</strong> e desconta <strong>19,03% de imposto</strong> sobre essa metade — o resultado é o valor líquido pago ao assessor. Essa fase se aplica sempre, inclusive quando o total é negativo (Custo de Plataforma e Taxa de Performance normalmente reduzem o valor do assessor, sem tratamento especial de sinal).</p>
-          <p class="status">Exemplo: um produto com Comissão Líquida de R$ 1.000,00, importado da planilha → Fase 1: R$ 1.000,00 × (1 − 1,5%) = R$ 985,00. Fase 2: R$ 985,00 ÷ 2 = R$ 492,50; R$ 492,50 × (1 − 19,03%) = <strong>R$ 398,78</strong> ao assessor. Se o mesmo valor fosse lançado manualmente (Comissão Líquida já pronta), pula a fase 1: R$ 1.000,00 ÷ 2 = R$ 500,00; R$ 500,00 × (1 − 19,03%) = <strong>R$ 404,85</strong> ao assessor.</p>
+          <p class="status">Exemplo: um produto com Comissão Líquida da Genial de R$ 1.000,00, importado da planilha → Fase 1: R$ 1.000,00 × (1 − 1,5%) = R$ 985,00. Fase 2: R$ 985,00 ÷ 2 = R$ 492,50; R$ 492,50 × (1 − 19,03%) = <strong>R$ 398,78</strong> ao assessor. Se o mesmo valor fosse lançado manualmente (Comissão Líquida da Genial já pronta), pula a fase 1: R$ 1.000,00 ÷ 2 = R$ 500,00; R$ 500,00 × (1 − 19,03%) = <strong>R$ 404,85</strong> ao assessor.</p>
         </div>
 
         <div class="regra-bloco">
