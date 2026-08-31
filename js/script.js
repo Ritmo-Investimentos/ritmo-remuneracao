@@ -616,7 +616,7 @@ async function renderizarPainel() {
               ${botoesAdmin}
             </div>
             ${linhas}
-            ${item.valorLiquidoPlanilhaFinal === undefined ? `<div class="lancamento-liquido">Valor líquido: ${formatarMoedaColorida(item.valorLiquido)}</div>` : ''}
+            ${(item.valorLiquidoPlanilhaFinal === undefined && !PRODUTOS_GENIAL_TODOS.includes(item.produto) && item.produto !== PRODUTO_REPASSE_IMPORTADO) ? `<div class="lancamento-liquido">Valor líquido: ${formatarMoedaColorida(item.valorLiquido)}</div>` : ''}
           </div>
         `;
       } else { // É uma passagem
@@ -732,7 +732,15 @@ function construirLinhasVenda(item) {
     linhas.push(`<div class="lancamento-linha">Imposto: ${formatarPercentual(item.impostoPercentualPlanilha)}</div>`);
     linhas.push(`<div class="lancamento-linha">Valor Líquido: ${formatarMoedaColorida(item.valorLiquidoPlanilhaFinal)}</div>`);
   } else if (PRODUTOS_GENIAL_TODOS.includes(item.produto) || item.produto === PRODUTO_REPASSE_IMPORTADO) {
-    // Sem detalhamento intermediário aqui — só o título e o "Valor líquido" (linha genérica abaixo).
+    // Nomes propositalmente diferentes dos usados na planilha da Genial, para não
+    // confundir: "Comissão bruta" aqui é o valor que a planilha chama de "Comissão
+    // Assessor"; "Imposto 19,03%" é o valor em R$ que o escritório retira antes de
+    // pagar o assessor; "Comissão líquida" é o valor final após ÷2 e -19,03% do
+    // escritório — não tem relação com a "Comissão Líquida" que aparece na planilha.
+    const impostoEscritorio = item.valorEscritorio - item.valorLiquido;
+    linhas.push(`<div class="lancamento-linha">Comissão bruta: ${formatarMoedaColorida(item.valorPrincipal)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Imposto 19,03%: ${formatarMoedaColorida(impostoEscritorio)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Comissão líquida: ${formatarMoedaColorida(item.valorLiquido)}</div>`);
   }
   return linhas.join('');
 }
