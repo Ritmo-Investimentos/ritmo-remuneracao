@@ -228,6 +228,13 @@ function formatarMoedaColorida(valor) {
   return valor < 0 ? `<span class="valor-negativo">${texto}</span>` : texto;
 }
 
+function formatarMoedaSinalizada(valor) {
+  const texto = formatarMoeda(valor);
+  if (valor > 0) return `<span class="valor-positivo">${texto}</span>`;
+  if (valor < 0) return `<span class="valor-negativo">${texto}</span>`;
+  return texto;
+}
+
 function formatarPercentual(valor) {
   return `${(valor * 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
@@ -740,7 +747,7 @@ function construirLinhasVenda(item) {
     const impostoEscritorio = item.valorEscritorio - item.valorLiquido;
     linhas.push(`<div class="lancamento-linha">Comissão bruta: ${formatarMoedaColorida(item.valorPrincipal)}</div>`);
     linhas.push(`<div class="lancamento-linha">Imposto 19,03%: ${formatarMoedaColorida(impostoEscritorio)}</div>`);
-    linhas.push(`<div class="lancamento-linha">Comissão líquida: ${formatarMoedaColorida(item.valorLiquido)}</div>`);
+    linhas.push(`<div class="lancamento-linha">Comissão líquida: ${formatarMoedaSinalizada(item.valorLiquido)}</div>`);
   }
   return linhas.join('');
 }
