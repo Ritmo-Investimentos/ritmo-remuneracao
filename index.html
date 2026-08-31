@@ -412,6 +412,19 @@
   </div>
 </div>
 
+<!-- Modal de Envio/Reenvio para Aprovação -->
+<div id="modal-envio-aprovacao-overlay">
+  <div id="modal-envio-aprovacao-box">
+    <h3>📤 Enviar para Aprovação</h3>
+    <p style="font-size:0.84rem;color:var(--muted);margin:0 0 10px">Mensagem para o colaborador (opcional). Ele verá essa mensagem junto com o repasse enviado.</p>
+    <textarea id="input-msg-envio-aprovacao" placeholder="Digite uma mensagem, se quiser..."></textarea>
+    <div class="modal-btns">
+      <button class="secondary" onclick="fecharModalEnvioAprovacao()">Cancelar</button>
+      <button onclick="confirmarEnvioAprovacao()">Enviar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Lógica JavaScript Principal -->
 <script src="js/script.js"></script>
 </body>

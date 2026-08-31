@@ -641,7 +641,7 @@ async function renderizarPainel() {
         if (isAdmin) {
           blocoAprovacao = `
             <div class="bloco-aprovacao">
-              <button onclick="enviarParaAprovacao('${funcionario.id}','${competenciaExibida}')" style="font-size:0.8rem;padding:7px 14px;">📤 Enviar para Aprovação</button>
+              <button onclick="abrirModalEnvioAprovacao('${funcionario.id}','${competenciaExibida}')" style="font-size:0.8rem;padding:7px 14px;">📤 Enviar para Aprovação</button>
             </div>`;
         }
       } else if (aprovacao.status === 'pendente') {
@@ -651,6 +651,7 @@ async function renderizarPainel() {
           blocoAprovacao = `
             <div class="bloco-aprovacao">
               <span class="badge-aprovacao badge-pendente">⏳ Repasse enviado para sua aprovação</span>
+              ${aprovacao.mensagemAdmin ? `<div class="msg-contestacao">💬 "${aprovacao.mensagemAdmin}"</div>` : ''}
               <div class="btns-resposta-aprovacao">
                 <button class="btn-aprovar" onclick="responderAprovacao('${aprovacao.id}','aprovado')">✅ Aprovar</button>
                 <button class="btn-contestar" onclick="abrirModalContestacao('${aprovacao.id}')">⚠️ Contestar</button>
@@ -664,7 +665,7 @@ async function renderizarPainel() {
           <div class="bloco-aprovacao">
             <span class="badge-aprovacao badge-contestado">⚠️ Repasse contestado</span>
             ${aprovacao.mensagemContestacao ? `<div class="msg-contestacao">💬 "${aprovacao.mensagemContestacao}"</div>` : ''}
-            ${isAdmin ? `<button style="font-size:0.78rem;margin-top:8px;padding:5px 12px;" onclick="enviarParaAprovacao('${funcionario.id}','${competenciaExibida}')">↩️ Reenviar para Aprovação</button>` : ''}
+            ${isAdmin ? `<button style="font-size:0.78rem;margin-top:8px;padding:5px 12px;" onclick="abrirModalEnvioAprovacao('${funcionario.id}','${competenciaExibida}')">↩️ Reenviar para Aprovação</button>` : ''}
           </div>`;
       }
     }
@@ -934,7 +935,7 @@ async function salvarEdicaoLancamento() {
 }
 
 // ---- Sistema de aprovação ----
-async function enviarParaAprovacao(funcionarioId, competencia) {
+async function enviarParaAprovacao(funcionarioId, competencia, mensagemAdmin = null) {
   // Remove aprovação anterior se existir (para reenvio)
   const todas = await promisify(tx('aprovacoes').getAll());
   const anterior = todas.find(a => a.funcionarioId === funcionarioId && a.competencia === competencia);
@@ -945,11 +946,29 @@ async function enviarParaAprovacao(funcionarioId, competencia) {
     competencia,
     status: 'pendente',
     mensagemContestacao: null,
+    mensagemAdmin: mensagemAdmin || null,
     dataEnvio: new Date().toISOString(),
     dataResposta: null
   }));
   alert('Repasse enviado para aprovação do funcionário!');
   await renderizarPainel();
+}
+
+let _envioAprovacaoPendente = null;
+function abrirModalEnvioAprovacao(funcionarioId, competencia) {
+  _envioAprovacaoPendente = { funcionarioId, competencia };
+  document.getElementById('input-msg-envio-aprovacao').value = '';
+  document.getElementById('modal-envio-aprovacao-overlay').classList.add('ativo');
+}
+function fecharModalEnvioAprovacao() {
+  _envioAprovacaoPendente = null;
+  document.getElementById('modal-envio-aprovacao-overlay').classList.remove('ativo');
+}
+async function confirmarEnvioAprovacao() {
+  const msg = document.getElementById('input-msg-envio-aprovacao').value.trim();
+  const { funcionarioId, competencia } = _envioAprovacaoPendente;
+  fecharModalEnvioAprovacao();
+  await enviarParaAprovacao(funcionarioId, competencia, msg || null);
 }
 
 async function responderAprovacao(aprovacaoId, novoStatus) {
