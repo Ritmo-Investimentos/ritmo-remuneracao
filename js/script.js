@@ -556,6 +556,7 @@ async function renderizarPainel() {
   const todosFuncionarios = await promisify(tx("funcionarios").getAll());
   const todosVendas = await promisify(tx("vendas").getAll());
   const todasPassagens = await promisify(tx("passagens").getAll());
+  await garantirPassagensRecorrentes(filtroMes || competenciaAtualDoSistema(), todosFuncionarios, todasPassagens);
 
   let totalGeral = 0;
   let htmlFuncionarios = "";
@@ -1116,6 +1117,31 @@ async function lancarVenda() {
   renderizarPainel(); // Atualiza o painel de remuneração
 }
 
+// Garante que colaboradores com passagem recorrente configurada (ver lancarPassagem)
+// tenham o lançamento do mês consultado já criado, sem precisar relançar manualmente
+// todo mês. Cada colaborador mantém sua própria regra (tipo/quantidade) de forma
+// independente, e só passa a valer a partir do mês em que foi configurada pela
+// primeira vez — meses anteriores a isso, ou após a exclusão do colaborador, não são
+// preenchidos automaticamente. Passagens já lançadas (manual ou recorrente) nunca são
+// duplicadas nem sobrescritas.
+async function garantirPassagensRecorrentes(competencia, funcionarios, passagensExistentes) {
+  for (const funcionario of funcionarios) {
+    const regra = funcionario.passagemRecorrente;
+    if (!regra || !regra.tipo || !regra.quantidade) continue;
+    if (funcionario.passagemRecorrenteDesde && competencia < funcionario.passagemRecorrenteDesde) continue;
+    if (funcionario.mesExclusao && competencia >= funcionario.mesExclusao) continue;
+
+    const jaExiste = passagensExistentes.some(p => p.funcionarioId === funcionario.id && p.competencia === competencia && p.tipo === regra.tipo);
+    if (jaExiste) continue;
+
+    const valorUnitario = configPassagem[regra.tipo];
+    const valorTotal = valorUnitario * regra.quantidade;
+    const dadosPassagem = { funcionarioId: funcionario.id, competencia, tipo: regra.tipo, quantidade: regra.quantidade, valorTotal, origem: "recorrente" };
+    const novoId = await promisify(tx("passagens", "readwrite").add(dadosPassagem));
+    passagensExistentes.push({ id: novoId, ...dadosPassagem });
+  }
+}
+
 async function lancarPassagem() {
   const funcionarioId = document.getElementById("select-colaborador-passagem").value; // string ID
   const competencia = document.getElementById("input-competencia-passagem").value;
@@ -1128,6 +1154,17 @@ async function lancarPassagem() {
   const valorTotal = valorUnitario * quantidade;
 
   await promisify(tx("passagens", "readwrite").add({ funcionarioId, competencia, tipo, quantidade, valorTotal }));
+
+  // A partir deste lançamento, essa mesma passagem (tipo e quantidade) passa a ser
+  // considerada automaticamente nos meses seguintes deste colaborador especificamente
+  // (cada um com sua própria regra), sem precisar lançar de novo todo mês.
+  const funcionario = await promisify(tx("funcionarios").get(funcionarioId));
+  if (funcionario) {
+    funcionario.passagemRecorrente = { tipo, quantidade };
+    if (!funcionario.passagemRecorrenteDesde) funcionario.passagemRecorrenteDesde = competencia;
+    await promisify(tx("funcionarios", "readwrite").put(funcionario));
+  }
+
   alert("Passagem lançada com sucesso!");
   renderizarPainel(); // Atualiza o painel de remuneração
 }
@@ -1760,6 +1797,7 @@ async function exportarFuncionarioPDF() {
   let passagens = await promisify(tx("passagens").index("funcionarioId").getAll(funcionarioId));
 
   if (competenciaFiltro) {
+    await garantirPassagensRecorrentes(competenciaFiltro, [funcionario], passagens);
     vendas = vendas.filter(v => v.competencia === competenciaFiltro);
     passagens = passagens.filter(p => p.competencia === competenciaFiltro);
   }
