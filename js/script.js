@@ -51,8 +51,16 @@ const IRFF_GENIAL_NORMAL = 0.015; // 1,5% de IRFF retido pela Genial (fase 1), i
 
 let configPassagem = {
   metro: 7.90,
-  onibus: 5.00
+  onibus: 5.00,
+  vlt: 5.00,
+  barca: 5.00,
+  trem: 7.60
 };
+
+const ROTULOS_TIPO_PASSAGEM = { metro: 'Metrô', onibus: 'Ônibus', vlt: 'VLT', barca: 'Barca', trem: 'Trem' };
+function rotuloTipoPassagem(tipo) {
+  return ROTULOS_TIPO_PASSAGEM[tipo] || tipo;
+}
 
 const PRODUTOS_GENIAL = ["BTC", "Bmf", "Bovespa", "CRI/CRA", "Clubes", "Debênture", "Fundos C.O", "Mercado Secundário", "IPO Bovespa", "Outros", "Previdência"];
 const PRODUTOS_GENIAL_DEDUCAO = ["Taxa de Performance", "Custo de Plataforma"]; // descontam do assessor, não somam
@@ -213,7 +221,15 @@ async function garantirAdminsPadrao() {
 
 async function carregarConfigPassagem() {
   const configSalva = await promisify(tx("configuracoes").get("passagem"));
-  if (configSalva) configPassagem = { metro: configSalva.metro, onibus: configSalva.onibus };
+  if (configSalva) {
+    configPassagem = {
+      metro: configSalva.metro ?? configPassagem.metro,
+      onibus: configSalva.onibus ?? configPassagem.onibus,
+      vlt: configSalva.vlt ?? configPassagem.vlt,
+      barca: configSalva.barca ?? configPassagem.barca,
+      trem: configSalva.trem ?? configPassagem.trem
+    };
+  }
   atualizarValorPassagemLabel(); // Garante que os labels sejam atualizados na carga
 }
 
@@ -627,7 +643,7 @@ async function renderizarPainel() {
           </div>
         `;
       } else { // É uma passagem
-        const tipoLabel = item.tipo === 'metro' ? 'Metrô' : 'Ônibus';
+        const tipoLabel = rotuloTipoPassagem(item.tipo);
         return `
           <div class="item-lancamento" onclick="event.stopPropagation()">
             <div class="lancamento-titulo">
@@ -895,6 +911,9 @@ async function abrirModalEdicao(tipo, id) {
           <select id="ed-tipo-passagem">
             <option value="metro" ${passagem.tipo==='metro'?'selected':''}>Metrô</option>
             <option value="onibus" ${passagem.tipo==='onibus'?'selected':''}>Ônibus</option>
+            <option value="vlt" ${passagem.tipo==='vlt'?'selected':''}>VLT</option>
+            <option value="barca" ${passagem.tipo==='barca'?'selected':''}>Barca</option>
+            <option value="trem" ${passagem.tipo==='trem'?'selected':''}>Trem</option>
           </select>
         </div>
         <div><label>Quantidade</label><input type="number" id="ed-qtd-passagem" value="${passagem.quantidade}" min="1" step="1"></div>
@@ -1406,6 +1425,9 @@ async function importarRepasseGenial(event) {
 function atualizarValorPassagemLabel() {
   document.getElementById("valor-unit-metro-label").textContent = formatarMoeda(configPassagem.metro).replace("R$", "");
   document.getElementById("valor-unit-onibus-label").textContent = formatarMoeda(configPassagem.onibus).replace("R$", "");
+  document.getElementById("valor-unit-vlt-label").textContent = formatarMoeda(configPassagem.vlt).replace("R$", "");
+  document.getElementById("valor-unit-barca-label").textContent = formatarMoeda(configPassagem.barca).replace("R$", "");
+  document.getElementById("valor-unit-trem-label").textContent = formatarMoeda(configPassagem.trem).replace("R$", "");
 }
 
 function alternarConfigPassagem() {
@@ -1415,6 +1437,9 @@ function alternarConfigPassagem() {
     cardConfig.style.display = 'flex';
     document.getElementById("input-valor-metro").value = formatarBR(configPassagem.metro);
     document.getElementById("input-valor-onibus").value = formatarBR(configPassagem.onibus);
+    document.getElementById("input-valor-vlt").value = formatarBR(configPassagem.vlt);
+    document.getElementById("input-valor-barca").value = formatarBR(configPassagem.barca);
+    document.getElementById("input-valor-trem").value = formatarBR(configPassagem.trem);
     btn.textContent = "Esconder ajustes";
   } else {
     cardConfig.style.display = 'none';
@@ -1425,11 +1450,14 @@ function alternarConfigPassagem() {
 async function salvarConfigPassagem() {
   const metro = parseBR(document.getElementById("input-valor-metro").value);
   const onibus = parseBR(document.getElementById("input-valor-onibus").value);
+  const vlt = parseBR(document.getElementById("input-valor-vlt").value);
+  const barca = parseBR(document.getElementById("input-valor-barca").value);
+  const trem = parseBR(document.getElementById("input-valor-trem").value);
 
-  if (isNaN(metro) || metro <= 0 || isNaN(onibus) || onibus <= 0) { alert("Valores de passagem inválidos."); return; }
+  if ([metro, onibus, vlt, barca, trem].some(v => isNaN(v) || v <= 0)) { alert("Valores de passagem inválidos."); return; }
 
-  configPassagem = { metro, onibus };
-  await promisify(tx("configuracoes", "readwrite").put({ chave: "passagem", metro, onibus }));
+  configPassagem = { metro, onibus, vlt, barca, trem };
+  await promisify(tx("configuracoes", "readwrite").put({ chave: "passagem", metro, onibus, vlt, barca, trem }));
   atualizarValorPassagemLabel();
   alert("Valores de passagem salvos!");
   alternarConfigPassagem(); // Esconde o card após salvar
@@ -1877,7 +1905,7 @@ async function exportarFuncionarioPDF() {
   const { totalAssessorMes, totalVariavelMes, aplicouPiso, vendasCalculadas, passagensCalculadas } = await calcularRemuneracaoMensal(funcionario, competenciaFiltro || competenciaAtualDoSistema(), todosVendas, passagens);
 
   const linhasVendasArr = vendasCalculadas.map(v => `<tr><td>${formatarCompetencia(v.competencia)}</td><td>${v.produto}</td><td>${formatarMoedaColorida(v.valorPrincipal)}</td><td>${v.detalheProduto}</td><td>${formatarMoedaColorida(v.valorEscritorio)}</td><td>${formatarMoedaColorida(v.valorLiquido)}</td></tr>`);
-  const linhasPassagensArr = passagensCalculadas.map(p => `<tr><td>${formatarCompetencia(p.competencia)}</td><td>Passagem ${p.tipo}</td><td>${p.quantidade}x ${formatarMoeda(p.valorUnitario)}</td><td></td><td></td><td>${formatarMoeda(p.valorTotal)}</td></tr>`);
+  const linhasPassagensArr = passagensCalculadas.map(p => `<tr><td>${formatarCompetencia(p.competencia)}</td><td>Passagem ${rotuloTipoPassagem(p.tipo)}</td><td>${p.quantidade}x ${formatarMoeda(p.valorUnitario)}</td><td></td><td></td><td>${formatarMoeda(p.valorTotal)}</td></tr>`);
 
   const linhas = [...linhasVendasArr, ...linhasPassagensArr].join("");
 

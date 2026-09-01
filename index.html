@@ -149,6 +149,9 @@
             <select id="select-tipo-passagem" onchange="atualizarValorPassagemLabel()">
               <option value="metro">Metrô (R$ <span id="valor-unit-metro-label">7,90</span> cada)</option>
               <option value="onibus">Ônibus (R$ <span id="valor-unit-onibus-label">5,00</span> cada)</option>
+              <option value="vlt">VLT (R$ <span id="valor-unit-vlt-label">5,00</span> cada)</option>
+              <option value="barca">Barca (R$ <span id="valor-unit-barca-label">5,00</span> cada)</option>
+              <option value="trem">Trem (R$ <span id="valor-unit-trem-label">7,60</span> cada)</option>
             </select>
           </div>
           <div><label>Quantidade de passagens</label><input type="number" id="input-qtd-passagem" min="1" step="1" value="1"></div>
@@ -159,6 +162,9 @@
           <div class="form-row" id="card-config-passagem" style="display:none;">
             <div><label>Valor do Metrô (R$)</label><input type="text" class="input-moeda" id="input-valor-metro" placeholder="0,00"></div>
             <div><label>Valor do Ônibus (R$)</label><input type="text" class="input-moeda" id="input-valor-onibus" placeholder="0,00"></div>
+            <div><label>Valor do VLT (R$)</label><input type="text" class="input-moeda" id="input-valor-vlt" placeholder="0,00"></div>
+            <div><label>Valor da Barca (R$)</label><input type="text" class="input-moeda" id="input-valor-barca" placeholder="0,00"></div>
+            <div><label>Valor do Trem (R$)</label><input type="text" class="input-moeda" id="input-valor-trem" placeholder="0,00"></div>
             <div style="align-self:flex-end;"><button onclick="salvarConfigPassagem()">Salvar valores</button></div>
           </div>
         </div>
