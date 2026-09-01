@@ -680,11 +680,9 @@ async function renderizarPainel() {
     const cargoLabel = isSDRNoMes ? 'SDR' : 'Assessor';
 
     // Resumo do status de aprovação, visível direto na caixa do funcionário (sem
-    // precisar expandir), para o admin acompanhar de forma rápida. Mostra também a
-    // última mensagem relevante (a que o admin enviou, ou a resposta/contestação do
-    // funcionário), já na caixa.
+    // precisar expandir), para o admin acompanhar de forma rápida. As mensagens
+    // (do admin ou do funcionário) continuam só dentro do card expandido.
     let resumoAprovacaoHeader = '';
-    let resumoAprovacaoMsg = '';
     if (filtroMes) {
       if (!aprovacao) {
         if (isAdmin) {
@@ -692,13 +690,10 @@ async function renderizarPainel() {
         }
       } else if (aprovacao.status === 'pendente') {
         resumoAprovacaoHeader = `<span class="badge-aprovacao badge-pendente">⏳ Pendente</span>`;
-        if (aprovacao.mensagemAdmin) resumoAprovacaoMsg = `<div class="resumo-msg-aprovacao">📤 Você: "${aprovacao.mensagemAdmin}"</div>`;
       } else if (aprovacao.status === 'aprovado') {
         resumoAprovacaoHeader = `<span class="badge-aprovacao badge-aprovado">✅ Aprovado</span>`;
-        if (aprovacao.mensagemAdmin) resumoAprovacaoMsg = `<div class="resumo-msg-aprovacao">📤 Você: "${aprovacao.mensagemAdmin}"</div>`;
       } else if (aprovacao.status === 'contestado') {
         resumoAprovacaoHeader = `<span class="badge-aprovacao badge-contestado">⚠️ Contestado</span>${isAdmin ? `<button class="badge-aprovacao-btn" onclick="event.stopPropagation();abrirModalEnvioAprovacao('${funcionario.id}','${competenciaExibida}')">↩️ Reenviar</button>` : ''}`;
-        if (aprovacao.mensagemContestacao) resumoAprovacaoMsg = `<div class="resumo-msg-aprovacao">💬 ${funcionario.nome}: "${aprovacao.mensagemContestacao}"</div>`;
       }
     }
 
@@ -712,7 +707,6 @@ async function renderizarPainel() {
             </span>
             <span class="total-mes">${formatarMoedaColorida(totalAssessorMes)}</span>
           </h3>
-          ${resumoAprovacaoMsg}
         </div>
         <div class="detalhes-funcionario-painel" id="detalhes-funcionario-${funcionario.id}" onclick="event.stopPropagation()">
           ${detalhesHtml || '<p class="status">Nenhum lançamento para este período.</p>'}
