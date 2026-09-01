@@ -55,6 +55,7 @@ input[type="number"], input[type="month"], input[type="text"], input[type="passw
 .form-row > div {
   flex-basis: 150px; /* Garante que cada item tenha uma base para o wrap */
   flex-grow: 1;
+  max-width: 280px; /* Evita que a caixa estique demais quando sobra espaço na linha */
 }
 .form-row label { font-size:0.8rem; color:var(--muted); display:block; margin-bottom:4px; }
 button { background:var(--primary); color:white; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.86rem; transition:background 0.2s; }

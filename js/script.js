@@ -1064,8 +1064,8 @@ async function renderizarLancarTab() {
   const selectColaboradorPassagem = document.getElementById("select-colaborador-passagem");
 
   selectFuncionario.innerHTML = funcionarios
-    .filter(f => !f.mesExclusao) // Remove imediatamente funcionários excluídos
-    .map(f => `<option value="${f.id}">${f.nome} (${f.tipo === 'sdr' ? 'SDR' : 'Assessor'})</option>`)
+    .filter(f => !f.mesExclusao && f.tipo !== 'sdr') // Só assessores; SDR não lança venda/produto
+    .map(f => `<option value="${f.id}">${f.nome}</option>`)
     .join("");
 
   selectColaboradorPassagem.innerHTML = funcionarios
