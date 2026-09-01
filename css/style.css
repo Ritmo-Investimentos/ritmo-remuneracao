@@ -53,9 +53,10 @@ input[type="number"], input[type="month"], input[type="text"], input[type="passw
 .input-moeda, .input-pct { text-align: right; letter-spacing: 0.02em; }
 .form-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; align-items:flex-start; }
 .form-row > div {
-  flex-basis: 150px; /* Garante que cada item tenha uma base para o wrap */
-  flex-grow: 1;
-  max-width: 280px; /* Evita que a caixa estique demais quando sobra espaço na linha */
+  flex-basis: 220px; /* Garante que cada item tenha uma base para o wrap */
+  flex-grow: 0; /* Não estica a caixa quando sobra espaço na linha; caixas ficam lado a lado */
+  flex-shrink: 1;
+  max-width: 280px;
 }
 .form-row label { font-size:0.8rem; color:var(--muted); display:block; margin-bottom:4px; }
 button { background:var(--primary); color:white; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600; font-size:0.86rem; transition:background 0.2s; }

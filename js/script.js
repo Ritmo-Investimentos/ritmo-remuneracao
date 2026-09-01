@@ -1468,7 +1468,7 @@ async function salvarConfigPassagem() {
 async function renderizarCalculadoraTab() {
   popularSelectProdutos("select-produto-calc");
   alterarProdutoSelecionado('calc'); // Renderiza os campos para o produto inicial
-  document.getElementById("resultado-simulacao").innerHTML = "<p class='status'>Nenhum item na simulação.</p>";
+  document.getElementById("resultado-simulacao").innerHTML = "";
   simulacaoAtual = []; // Limpa a simulação ao entrar na aba
 }
 
@@ -1515,7 +1515,7 @@ async function adicionarSimulacao() {
 async function renderizarSimulacao() {
   const resultadoEl = document.getElementById("resultado-simulacao");
   if (simulacaoAtual.length === 0) {
-    resultadoEl.innerHTML = "<p class='status'>Nenhum item na simulação.</p>";
+    resultadoEl.innerHTML = "";
     return;
   }
 
