@@ -1109,33 +1109,37 @@ function popularSelectProdutos(selectId) {
 }
 
 function alterarProdutoSelecionado(prefixo) {
-  const produto = document.getElementById(`select-produto${prefixo === 'calc' ? '-calc' : ''}`).value;
+  const sufixo = prefixo === 'calc' ? '-calc' : '';
+  const produto = document.getElementById(`select-produto${sufixo}`).value;
+  // Na calculadora os grupos de campos ficam no mesmo form-row do Produto;
+  // "contents" faz os filhos do grupo virarem itens do flex do form-row, em vez de uma linha própria.
+  const modoExibicao = prefixo === 'calc' ? 'contents' : 'flex';
 
   // Esconde todos os campos específicos
-  document.getElementById(`campos-padrao${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
-  document.getElementById(`campos-seguro${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
-  document.getElementById(`campos-consorcio${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
-  document.getElementById(`campos-renda-variavel${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
-  document.getElementById(`campos-plano-saude${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
-  document.getElementById(`campos-genial${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'none';
+  document.getElementById(`campos-padrao${sufixo}`).style.display = 'none';
+  document.getElementById(`campos-seguro${sufixo}`).style.display = 'none';
+  document.getElementById(`campos-consorcio${sufixo}`).style.display = 'none';
+  document.getElementById(`campos-renda-variavel${sufixo}`).style.display = 'none';
+  document.getElementById(`campos-plano-saude${sufixo}`).style.display = 'none';
+  document.getElementById(`campos-genial${sufixo}`).style.display = 'none';
 
   // Mostra os campos relevantes
   if (produto === "Seguro") {
-    document.getElementById(`campos-seguro${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
+    document.getElementById(`campos-seguro${sufixo}`).style.display = modoExibicao;
     alterarSeguradoraSelecionada(prefixo); // Garante que o campo PJ2 seja atualizado
   } else if (produto === "Consórcio") {
-    document.getElementById(`campos-consorcio${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
-    popularSelect(document.getElementById(`select-administradora-consorcio${prefixo === 'calc' ? '-calc' : ''}`), ADMINISTRADORAS_CONSORCIO);
+    document.getElementById(`campos-consorcio${sufixo}`).style.display = modoExibicao;
+    popularSelect(document.getElementById(`select-administradora-consorcio${sufixo}`), ADMINISTRADORAS_CONSORCIO);
   } else if (produto === "Renda Variável") {
-    document.getElementById(`campos-renda-variavel${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
-    popularSelect(document.getElementById(`select-tipo-rv${prefixo === 'calc' ? '-calc' : ''}`), TIPOS_RENDA_VARIAVEL);
+    document.getElementById(`campos-renda-variavel${sufixo}`).style.display = modoExibicao;
+    popularSelect(document.getElementById(`select-tipo-rv${sufixo}`), TIPOS_RENDA_VARIAVEL);
   } else if (produto === "Plano de Saúde") {
-    document.getElementById(`campos-plano-saude${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
-    popularSelect(document.getElementById(`select-empresa-ps${prefixo === 'calc' ? '-calc' : ''}`), EMPRESAS_PLANO_SAUDE);
+    document.getElementById(`campos-plano-saude${sufixo}`).style.display = modoExibicao;
+    popularSelect(document.getElementById(`select-empresa-ps${sufixo}`), EMPRESAS_PLANO_SAUDE);
   } else if (PRODUTOS_GENIAL_TODOS.includes(produto)) {
-    document.getElementById(`campos-genial${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
+    document.getElementById(`campos-genial${sufixo}`).style.display = modoExibicao;
   } else { // Renda Fixa, Fundos
-    document.getElementById(`campos-padrao${prefixo === 'calc' ? '-calc' : ''}`).style.display = 'flex';
+    document.getElementById(`campos-padrao${sufixo}`).style.display = modoExibicao;
   }
 }
 

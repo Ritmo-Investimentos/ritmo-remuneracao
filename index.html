@@ -177,66 +177,66 @@
         <h2>Simular Venda / Produto</h2>
         <div class="form-row">
           <div><label>Produto</label><select id="select-produto-calc" onchange="alterarProdutoSelecionado('calc')"></select></div>
-        </div>
-        <div id="campos-padrao-calc" class="form-row">
-          <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor-calc" placeholder="0,00"></div>
-          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-variavel-calc" placeholder="0,00"></div>
-        </div>
-        <div id="campos-seguro-calc" class="form-row" style="display:none;">
-          <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio-calc" placeholder="0,00"></div>
-          <div><label>Seguradora</label>
-            <select id="select-seguradora-calc" onchange="alterarSeguradoraSelecionada('calc')">
-              <option value="Azos">Azos</option>
-              <option value="Bradesco">Bradesco</option>
-              <option value="Genial">Genial</option>
-              <option value="Icatu">Icatu</option>
-              <option value="MAG">MAG</option>
-              <option value="MetLife">MetLife</option>
-              <option value="Porto">Porto</option>
-            </select>
+          <div id="campos-padrao-calc" style="display:contents;">
+            <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor-calc" placeholder="0,00"></div>
+            <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-variavel-calc" placeholder="0,00"></div>
           </div>
-          <div id="campo-pj2-calc" style="display:none;">
-            <label>Mesa PJ2 participou?</label>
-            <select id="select-pj2-calc">
-              <option value="nao">Não</option><option value="sim">Sim</option>
-            </select>
+          <div id="campos-seguro-calc" style="display:none;">
+            <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio-calc" placeholder="0,00"></div>
+            <div><label>Seguradora</label>
+              <select id="select-seguradora-calc" onchange="alterarSeguradoraSelecionada('calc')">
+                <option value="Azos">Azos</option>
+                <option value="Bradesco">Bradesco</option>
+                <option value="Genial">Genial</option>
+                <option value="Icatu">Icatu</option>
+                <option value="MAG">MAG</option>
+                <option value="MetLife">MetLife</option>
+                <option value="Porto">Porto</option>
+              </select>
+            </div>
+            <div id="campo-pj2-calc" style="display:none;">
+              <label>Mesa PJ2 participou?</label>
+              <select id="select-pj2-calc">
+                <option value="nao">Não</option><option value="sim">Sim</option>
+              </select>
+            </div>
           </div>
-        </div>
-        <div id="campos-consorcio-calc" class="form-row" style="display:none;">
-          <div><label>Valor do Consórcio (R$)</label><input type="text" class="input-moeda" id="input-valor-consorcio-calc" placeholder="0,00"></div>
-          <div><label>Administradora</label>
-            <select id="select-administradora-consorcio-calc">
-              <option value="HS">HS</option>
-              <option value="Ademicon">Ademicon</option>
-              <option value="Embracon">Embracon</option>
-            </select>
+          <div id="campos-consorcio-calc" style="display:none;">
+            <div><label>Valor do Consórcio (R$)</label><input type="text" class="input-moeda" id="input-valor-consorcio-calc" placeholder="0,00"></div>
+            <div><label>Administradora</label>
+              <select id="select-administradora-consorcio-calc">
+                <option value="HS">HS</option>
+                <option value="Ademicon">Ademicon</option>
+                <option value="Embracon">Embracon</option>
+              </select>
+            </div>
+            <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-consorcio-calc" placeholder="0,00"></div>
           </div>
-          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-consorcio-calc" placeholder="0,00"></div>
-        </div>
-        <div id="campos-renda-variavel-calc" class="form-row" style="display:none;">
-          <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor-rv-calc" placeholder="0,00"></div>
-          <div><label>Tipo de Renda Variável</label>
-            <select id="select-tipo-rv-calc">
-              <option value="Ações">Ações</option>
-              <option value="Opções">Opções</option>
-            </select>
+          <div id="campos-renda-variavel-calc" style="display:none;">
+            <div><label>Valor investido (R$)</label><input type="text" class="input-moeda" id="input-valor-rv-calc" placeholder="0,00"></div>
+            <div><label>Tipo de Renda Variável</label>
+              <select id="select-tipo-rv-calc">
+                <option value="Ações">Ações</option>
+                <option value="Opções">Opções</option>
+              </select>
+            </div>
+            <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-rv-calc" placeholder="0,00"></div>
           </div>
-          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-rv-calc" placeholder="0,00"></div>
-        </div>
-        <div id="campos-plano-saude-calc" class="form-row" style="display:none;">
-          <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio-ps-calc" placeholder="0,00"></div>
-          <div><label>Empresa</label>
-            <select id="select-empresa-ps-calc">
-              <option value="Sul América">Sul América</option>
-              <option value="Porto">Porto</option>
-              <option value="Bradesco">Bradesco</option>
-              <option value="HapVida">HapVida</option>
-            </select>
+          <div id="campos-plano-saude-calc" style="display:none;">
+            <div><label>Prêmio mensal (R$)</label><input type="text" class="input-moeda" id="input-premio-ps-calc" placeholder="0,00"></div>
+            <div><label>Empresa</label>
+              <select id="select-empresa-ps-calc">
+                <option value="Sul América">Sul América</option>
+                <option value="Porto">Porto</option>
+                <option value="Bradesco">Bradesco</option>
+                <option value="HapVida">HapVida</option>
+              </select>
+            </div>
+            <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps-calc" placeholder="0,00"></div>
           </div>
-          <div><label>Percentual (%)</label><input type="text" class="input-pct" id="input-percentual-ps-calc" placeholder="0,00"></div>
-        </div>
-        <div id="campos-genial-calc" class="form-row" style="display:none;">
-          <div><label>Comissão bruta (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial-calc" placeholder="0,00"></div>
+          <div id="campos-genial-calc" style="display:none;">
+            <div><label>Comissão bruta (R$)</label><input type="text" class="input-moeda" id="input-comissao-genial-calc" placeholder="0,00"></div>
+          </div>
         </div>
         <div class="form-row">
           <button onclick="adicionarSimulacao()">Adicionar à simulação</button>
