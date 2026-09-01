@@ -51,6 +51,7 @@ input[type="number"], input[type="month"], input[type="text"], input[type="passw
   flex-grow: 1;
 }
 .input-moeda, .input-pct { text-align: right; letter-spacing: 0.02em; }
+.form-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; align-items:flex-start; }
 .form-row > div {
   flex-basis: 150px; /* Garante que cada item tenha uma base para o wrap */
   flex-grow: 1;
