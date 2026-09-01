@@ -687,13 +687,13 @@ async function renderizarPainel() {
         <div class="funcionario-card-painel" id="card-funcionario-${funcionario.id}" onclick="toggleDetalhesFuncionario('${funcionario.id}')">
           <h3>
             <span>
-              ${funcionario.nome} ${seloPiso} ${seloExcluido} ${resumoAprovacaoHeader}
-              <div class="card-cargo">${cargoLabel}</div>
+              ${funcionario.nome} ${seloExcluido} ${resumoAprovacaoHeader}
             </span>
             <span class="total-mes">${formatarMoedaColorida(totalAssessorMes)}</span>
           </h3>
         </div>
         <div class="detalhes-funcionario-painel" id="detalhes-funcionario-${funcionario.id}" onclick="event.stopPropagation()">
+          <div class="card-info-expandida">${seloPiso} <span class="card-cargo">${cargoLabel}</span></div>
           ${detalhesHtml || '<p class="status">Nenhum lançamento para este período.</p>'}
           ${botaoLimparMes}
           ${blocoAprovacao}
