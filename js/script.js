@@ -787,10 +787,29 @@ function construirLinhasVenda(item) {
 }
 
 // ---- Excluir lançamento ----
+// Se não sobrou nenhum lançamento (venda/passagem) de um funcionário num mês,
+// não faz sentido manter um status de aprovação para ele — remove a aprovação
+// para que o card volte a mostrar "Enviar p/ Aprovação" em vez de um status obsoleto.
+async function limparAprovacaoSeVazio(funcionarioId, competencia) {
+  const [todasVendas, todasPassagens, todasAprovacoes] = await Promise.all([
+    promisify(tx('vendas').getAll()),
+    promisify(tx('passagens').getAll()),
+    promisify(tx('aprovacoes').getAll())
+  ]);
+  const aindaTemLancamentos = todasVendas.some(v => v.funcionarioId === funcionarioId && v.competencia === competencia)
+    || todasPassagens.some(p => p.funcionarioId === funcionarioId && p.competencia === competencia);
+  if (aindaTemLancamentos) return;
+
+  const aprovacao = todasAprovacoes.find(a => a.funcionarioId === funcionarioId && a.competencia === competencia);
+  if (aprovacao) await promisify(tx('aprovacoes', 'readwrite').delete(aprovacao.id));
+}
+
 async function excluirLancamento(tipo, id) {
   if (!confirm('Excluir este lançamento? Esta ação não pode ser desfeita.')) return;
   const store = tipo === 'venda' ? 'vendas' : 'passagens';
+  const item = await promisify(tx(store).get(id));
   await promisify(tx(store, 'readwrite').delete(id));
+  if (item) await limparAprovacaoSeVazio(item.funcionarioId, item.competencia);
   await renderizarPainel();
 }
 
@@ -804,6 +823,8 @@ async function limparLancamentosDoMes(funcionarioId, competencia) {
 
   for (const v of vendasDoMes) await promisify(tx('vendas', 'readwrite').delete(v.id));
   for (const p of passagensDoMes) await promisify(tx('passagens', 'readwrite').delete(p.id));
+
+  await limparAprovacaoSeVazio(funcionarioId, competencia);
 
   alert('Lançamentos do mês excluídos.');
   await renderizarPainel();
@@ -819,8 +840,14 @@ async function limparRemuneracoesDoMesTodos() {
   const vendasDoMes = todasVendas.filter(v => v.competencia === competencia);
   const passagensDoMes = todasPassagens.filter(p => p.competencia === competencia);
 
+  const funcionarioIdsAfetados = new Set([...vendasDoMes.map(v => v.funcionarioId), ...passagensDoMes.map(p => p.funcionarioId)]);
+
   for (const v of vendasDoMes) await promisify(tx('vendas', 'readwrite').delete(v.id));
   for (const p of passagensDoMes) await promisify(tx('passagens', 'readwrite').delete(p.id));
+
+  for (const funcionarioId of funcionarioIdsAfetados) {
+    await limparAprovacaoSeVazio(funcionarioId, competencia);
+  }
 
   alert(`Lançamentos de ${formatarCompetencia(competencia)} excluídos para todos os colaboradores.`);
   await renderizarPainel();
