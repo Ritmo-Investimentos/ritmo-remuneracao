@@ -7,6 +7,14 @@
       "firestore.rules",
       "iniciar-servidor.ps1",
       "**/.*"
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|html)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache" }
+        ]
+      }
     ]
   },
   "firestore": {
