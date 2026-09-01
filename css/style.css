@@ -141,7 +141,10 @@ button.secondary:hover { background:#475569; }
 .badge-contestado { background:#fee2e2; color:#991b1b; }
 .badge-aprovacao-btn { display:inline-flex; align-items:center; gap:5px; font-size:0.72rem; font-weight:700; padding:4px 10px; border-radius:999px; margin-left:4px; border:none; cursor:pointer; background:var(--primary); color:#fff; }
 .badge-aprovacao-btn:hover { background:var(--primary-dark); }
-.msg-contestacao { font-size:0.8rem; color:var(--danger); background:#fff1f1; border-left:3px solid var(--danger); padding:6px 10px; border-radius:0 6px 6px 0; margin-top:6px; }
+.chat-aprovacao { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; margin-bottom:10px; }
+.chat-aprovacao-item { font-size:0.82rem; background:#f8f7fc; border-radius:8px; padding:8px 10px; line-height:1.5; }
+.chat-aprovacao-item strong { color:var(--primary-dark); }
+.chat-aprovacao-data { display:block; font-size:0.7rem; color:var(--muted); margin-top:2px; }
 .btns-resposta-aprovacao { display:flex; gap:8px; margin-top:8px; }
 .btns-resposta-aprovacao button { padding:6px 14px; font-size:0.8rem; }
 .btn-aprovar { background:var(--success); }

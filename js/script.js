@@ -641,39 +641,24 @@ async function renderizarPainel() {
       }
     }).join("");
 
-    // Bloco de aprovação
+    // Bloco de aprovação: o selo de status e o botão de Enviar/Reenviar já aparecem
+    // no cabeçalho do card (sem precisar expandir) — aqui, ao expandir, mostra só o
+    // histórico salvo da conversa (chat) e as ações que só cabem aqui (Aprovar/Contestar
+    // do funcionário), sem repetir a mesma informação de status.
     let blocoAprovacao = '';
-    if (filtroMes) {
-      if (!aprovacao) {
-        if (isAdmin) {
-          blocoAprovacao = `
-            <div class="bloco-aprovacao">
-              <button onclick="abrirModalEnvioAprovacao('${funcionario.id}','${competenciaExibida}')" style="font-size:0.8rem;padding:7px 14px;">📤 Enviar para Aprovação</button>
-            </div>`;
-        }
-      } else if (aprovacao.status === 'pendente') {
-        if (isAdmin) {
-          blocoAprovacao = `<div class="bloco-aprovacao"><span class="badge-aprovacao badge-pendente">⏳ Aguardando aprovação do funcionário</span></div>`;
-        } else if (isMeuCard) {
-          blocoAprovacao = `
-            <div class="bloco-aprovacao">
-              <span class="badge-aprovacao badge-pendente">⏳ Repasse enviado para sua aprovação</span>
-              ${aprovacao.mensagemAdmin ? `<div class="msg-contestacao">💬 "${aprovacao.mensagemAdmin}"</div>` : ''}
-              <div class="btns-resposta-aprovacao">
-                <button class="btn-aprovar" onclick="responderAprovacao('${aprovacao.id}','aprovado')">✅ Aprovar</button>
-                <button class="btn-contestar" onclick="abrirModalContestacao('${aprovacao.id}')">⚠️ Contestar</button>
-              </div>
-            </div>`;
-        }
-      } else if (aprovacao.status === 'aprovado') {
-        blocoAprovacao = `<div class="bloco-aprovacao"><span class="badge-aprovacao badge-aprovado">✅ Repasse aprovado</span></div>`;
-      } else if (aprovacao.status === 'contestado') {
+    if (filtroMes && aprovacao) {
+      const chatHtml = construirChatAprovacao(aprovacao.historico, funcionario, isAdmin);
+      if (aprovacao.status === 'pendente' && isMeuCard) {
         blocoAprovacao = `
           <div class="bloco-aprovacao">
-            <span class="badge-aprovacao badge-contestado">⚠️ Repasse contestado</span>
-            ${aprovacao.mensagemContestacao ? `<div class="msg-contestacao">💬 "${aprovacao.mensagemContestacao}"</div>` : ''}
-            ${isAdmin ? `<button style="font-size:0.78rem;margin-top:8px;padding:5px 12px;" onclick="abrirModalEnvioAprovacao('${funcionario.id}','${competenciaExibida}')">↩️ Reenviar para Aprovação</button>` : ''}
+            ${chatHtml}
+            <div class="btns-resposta-aprovacao">
+              <button class="btn-aprovar" onclick="responderAprovacao('${aprovacao.id}','aprovado')">✅ Aprovar</button>
+              <button class="btn-contestar" onclick="abrirModalContestacao('${aprovacao.id}')">⚠️ Contestar</button>
+            </div>
           </div>`;
+      } else if (chatHtml) {
+        blocoAprovacao = `<div class="bloco-aprovacao">${chatHtml}</div>`;
       }
     }
 
@@ -722,6 +707,21 @@ async function renderizarPainel() {
 }
 
 // ---- Helpers de exibição de venda ----
+// Monta o histórico salvo (chat) de envios/respostas de aprovação, rotulando cada
+// mensagem como "Você" ou o nome de quem enviou, conforme quem está olhando.
+function construirChatAprovacao(historico, funcionario, isAdmin) {
+  if (!historico || historico.length === 0) return '';
+  const linhas = historico.map(h => {
+    const souEu = (h.autor === 'admin' && isAdmin) || (h.autor === 'funcionario' && !isAdmin);
+    const quem = souEu ? 'Você' : (h.autor === 'admin' ? 'Administração' : funcionario.nome);
+    const dataFormatada = new Date(h.data).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const acao = { envio: 'enviou para aprovação', aprovacao: 'aprovou o repasse', contestacao: 'contestou o repasse' }[h.tipo] || '';
+    const textoMsg = h.mensagem ? `: "${h.mensagem}"` : '';
+    return `<div class="chat-aprovacao-item"><strong>${quem}</strong> ${acao}${textoMsg}<span class="chat-aprovacao-data">${dataFormatada}</span></div>`;
+  }).join('');
+  return `<div class="chat-aprovacao">${linhas}</div>`;
+}
+
 function construirTituloVenda(item) {
   if (item.produto === 'Seguro') return `🛡 Seguro · ${item.seguradora}`;
   if (item.produto === 'Consórcio') return `🤝 Consórcio · ${item.administradoraConsorcio}`;
@@ -969,20 +969,28 @@ async function salvarEdicaoLancamento() {
 
 // ---- Sistema de aprovação ----
 async function enviarParaAprovacao(funcionarioId, competencia, mensagemAdmin = null) {
-  // Remove aprovação anterior se existir (para reenvio)
+  // Reaproveita a aprovação anterior (se existir) para manter o histórico de
+  // mensagens salvo — reenviar não apaga a conversa, só reabre o status.
   const todas = await promisify(tx('aprovacoes').getAll());
   const anterior = todas.find(a => a.funcionarioId === funcionarioId && a.competencia === competencia);
-  if (anterior) await promisify(tx('aprovacoes', 'readwrite').delete(anterior.id));
+  const historico = (anterior && anterior.historico) || [];
+  historico.push({ autor: 'admin', mensagem: mensagemAdmin || null, data: new Date().toISOString(), tipo: 'envio' });
 
-  await promisify(tx('aprovacoes', 'readwrite').add({
+  const dados = {
     funcionarioId,
     competencia,
     status: 'pendente',
     mensagemContestacao: null,
     mensagemAdmin: mensagemAdmin || null,
     dataEnvio: new Date().toISOString(),
-    dataResposta: null
-  }));
+    dataResposta: null,
+    historico
+  };
+  if (anterior) {
+    await promisify(tx('aprovacoes', 'readwrite').put({ id: anterior.id, ...dados }));
+  } else {
+    await promisify(tx('aprovacoes', 'readwrite').add(dados));
+  }
   alert('Repasse enviado para aprovação do funcionário!');
   await renderizarPainel();
 }
@@ -1008,6 +1016,8 @@ async function responderAprovacao(aprovacaoId, novoStatus) {
   const aprovacao = await promisify(tx('aprovacoes').get(aprovacaoId));
   aprovacao.status = novoStatus;
   aprovacao.dataResposta = new Date().toISOString();
+  if (!aprovacao.historico) aprovacao.historico = [];
+  aprovacao.historico.push({ autor: 'funcionario', mensagem: null, data: aprovacao.dataResposta, tipo: 'aprovacao' });
   await promisify(tx('aprovacoes', 'readwrite').put(aprovacao));
   await renderizarPainel();
 }
@@ -1029,6 +1039,8 @@ async function confirmarContestacao() {
   aprovacao.status = 'contestado';
   aprovacao.mensagemContestacao = msg;
   aprovacao.dataResposta = new Date().toISOString();
+  if (!aprovacao.historico) aprovacao.historico = [];
+  aprovacao.historico.push({ autor: 'funcionario', mensagem: msg, data: aprovacao.dataResposta, tipo: 'contestacao' });
   await promisify(tx('aprovacoes', 'readwrite').put(aprovacao));
   fecharModalContestacao();
   await renderizarPainel();
