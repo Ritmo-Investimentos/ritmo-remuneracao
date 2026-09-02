@@ -38,6 +38,7 @@ body { margin:0; font-family:'Segoe UI', Arial, sans-serif; background:var(--bg)
 .card h2 { margin-top:0; color:var(--primary-dark); font-size:1.15rem; border-bottom:2px solid var(--border); padding-bottom:8px; }
 .card h3 { color:var(--primary-dark); font-size:0.95rem; margin:16px 0 4px; }
 table { width:100%; border-collapse:collapse; margin-top:12px; }
+.grafico-evolucao-container { position:relative; height:360px; margin-bottom:10px; }
 th, td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--border); font-size:0.85rem; }
 th { background:#f3effc; color:var(--primary-dark); font-weight:600; }
 /* Ajuste para inputs e selects para evitar corte */

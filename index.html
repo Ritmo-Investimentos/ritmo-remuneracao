@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ritmo Investimentos | Gestão de Remuneração</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <!-- Firebase SDK -->
-<script type="module" src="firebase-init.js?v=20260901b"></script>
+<script type="module" src="firebase-init.js?v=20260902"></script>
 <!-- Estilos Externos -->
-<link rel="stylesheet" href="css/style.css?v=20260901b">
+<link rel="stylesheet" href="css/style.css?v=20260902">
 </head>
 <body>
 
@@ -246,6 +247,26 @@
       </div>
     </section>
 
+    <section id="view-evolucao" class="view">
+      <div class="topbar"><h1>📈 Evolução das Receitas</h1></div>
+      <div class="card">
+        <div class="form-row" id="filtro-evolucao-admin" style="display:none;">
+          <div><label>Assessor</label><select id="select-assessor-evolucao" onchange="renderizarEvolucaoTab()"></select></div>
+        </div>
+        <p class="status" id="evolucao-sem-dados" style="display:none;"></p>
+        <div id="evolucao-conteudo" style="display:none;">
+          <div class="grafico-evolucao-container">
+            <canvas id="grafico-evolucao-receitas"></canvas>
+          </div>
+          <h3>Variação percentual (mês a mês)</h3>
+          <table id="tabela-variacao-evolucao">
+            <thead><tr><th>Mês</th><th>Receita</th><th>Variação vs. mês anterior</th></tr></thead>
+            <tbody id="tabela-variacao-evolucao-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section id="view-equipe" class="view">
       <div class="topbar"><h1>👨‍💼 Equipe</h1></div>
       <div class="card">
@@ -430,6 +451,6 @@
 </div>
 
 <!-- Lógica JavaScript Principal -->
-<script src="js/script.js?v=20260901b"></script>
+<script src="js/script.js?v=20260902"></script>
 </body>
 </html>

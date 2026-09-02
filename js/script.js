@@ -351,6 +351,7 @@ async function renderizarMenu() {
     { id: "view-painel", label: "👥 Remuneração", roles: ["admin", "assessor", "sdr"] },
     { id: "view-lancar", label: "📝 Lançar Repasse", roles: ["admin"] },
     { id: "view-calculadora", label: "🧮 Calculadora", roles: ["admin", "assessor"] },
+    { id: "view-evolucao", label: "📈 Evolução das Receitas", roles: ["admin", "assessor"] },
     { id: "view-equipe", label: "👨‍💼 Equipe", roles: ["admin"] },
     { id: "view-regras", label: "📋 Regras de Comissionamento", roles: ["admin", "assessor", "sdr"] },
     { id: "view-importar-exportar", label: "📥 Importar e Exportar", roles: ["admin"] }
@@ -390,6 +391,7 @@ async function mudarAba(idAba) {
   if (idAba === "view-painel") await renderizarPainel();
   else if (idAba === "view-lancar") await renderizarLancarTab();
   else if (idAba === "view-calculadora") await renderizarCalculadoraTab();
+  else if (idAba === "view-evolucao") await renderizarEvolucaoTab();
   else if (idAba === "view-equipe") await renderizarAssessoresTab();
   else if (idAba === "view-regras") { /* Não precisa de renderização específica */ }
   else if (idAba === "view-importar-exportar") await renderizarImportarExportarTab();
@@ -1575,6 +1577,106 @@ async function renderizarSimulacao() {
 function limparSimulacao() {
   simulacaoAtual = [];
   renderizarSimulacao();
+}
+
+// ===================== EVOLUÇÃO DAS RECEITAS =====================
+// Compara a receita (Total do mês, já com piso/passagem aplicados — o mesmo
+// valor mostrado na aba Remuneração) mês a mês. Sem mês anterior, ou com o mês
+// anterior zerado/negativo, não há uma variação percentual que faça sentido.
+function calcularVariacaoPercentual(atual, anterior) {
+  if (anterior === undefined || anterior === null) return null;
+  if (anterior <= 0) return null;
+  return ((atual - anterior) / anterior) * 100;
+}
+
+let _graficoEvolucaoChart = null;
+
+async function renderizarEvolucaoTab() {
+  const isAdmin = usuarioLogado.tipo === "admin";
+  const filtroAdminEl = document.getElementById("filtro-evolucao-admin");
+  const selectAssessor = document.getElementById("select-assessor-evolucao");
+  const semDadosEl = document.getElementById("evolucao-sem-dados");
+  const contentEl = document.getElementById("evolucao-conteudo");
+
+  const todosFuncionarios = await promisify(tx("funcionarios").getAll());
+  const todasVendas = await promisify(tx("vendas").getAll());
+  const todasPassagens = await promisify(tx("passagens").getAll());
+
+  let funcionario;
+  if (isAdmin) {
+    filtroAdminEl.style.display = "flex";
+    const assessores = todosFuncionarios.filter(f => f.tipo === "assessor");
+    const selecaoAnterior = selectAssessor.value;
+    selectAssessor.innerHTML = assessores.map(f => `<option value="${f.id}">${f.nome}</option>`).join("");
+    if (selecaoAnterior && assessores.some(f => f.id === selecaoAnterior)) selectAssessor.value = selecaoAnterior;
+    funcionario = assessores.find(f => f.id === selectAssessor.value);
+  } else {
+    filtroAdminEl.style.display = "none";
+    funcionario = todosFuncionarios.find(f => f.id === usuarioLogado.funcionarioId);
+  }
+
+  if (!funcionario) {
+    contentEl.style.display = "none";
+    semDadosEl.style.display = "block";
+    semDadosEl.textContent = "Nenhum assessor encontrado.";
+    return;
+  }
+
+  // Meses em que este assessor teve algum lançamento (venda ou passagem), em ordem cronológica
+  const competencias = [...new Set([
+    ...todasVendas.filter(v => v.funcionarioId === funcionario.id).map(v => v.competencia),
+    ...todasPassagens.filter(p => p.funcionarioId === funcionario.id).map(p => p.competencia)
+  ])].sort();
+
+  if (competencias.length === 0) {
+    contentEl.style.display = "none";
+    semDadosEl.style.display = "block";
+    semDadosEl.textContent = "Nenhum lançamento encontrado para gerar a evolução.";
+    return;
+  }
+
+  semDadosEl.style.display = "none";
+  contentEl.style.display = "block";
+
+  const serie = [];
+  for (const competencia of competencias) {
+    const { totalAssessorMes } = await calcularRemuneracaoMensal(funcionario, competencia, todasVendas, todasPassagens);
+    serie.push({ competencia, valor: totalAssessorMes });
+  }
+
+  const ctx = document.getElementById("grafico-evolucao-receitas").getContext("2d");
+  if (_graficoEvolucaoChart) _graficoEvolucaoChart.destroy();
+  _graficoEvolucaoChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: serie.map(s => formatarCompetencia(s.competencia)),
+      datasets: [{
+        label: `Receita de ${funcionario.nome}`,
+        data: serie.map(s => s.valor),
+        backgroundColor: "#6d28d9"
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (item) => formatarMoeda(item.parsed.y) } }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: (v) => formatarMoeda(v) } }
+      }
+    }
+  });
+
+  const corpoTabela = document.getElementById("tabela-variacao-evolucao-body");
+  corpoTabela.innerHTML = serie.map((s, i) => {
+    const anterior = i > 0 ? serie[i - 1].valor : undefined;
+    const variacao = calcularVariacaoPercentual(s.valor, anterior);
+    const variacaoHtml = variacao === null
+      ? '—'
+      : `<span class="${variacao >= 0 ? 'valor-positivo' : 'valor-negativo'}">${variacao >= 0 ? '+' : ''}${formatarBR(variacao)}%</span>`;
+    return `<tr><td>${formatarCompetenciaExtenso(s.competencia)}</td><td>${formatarMoedaColorida(s.valor)}</td><td>${variacaoHtml}</td></tr>`;
+  }).join("");
 }
 
 // ===================== EQUIPE =====================
