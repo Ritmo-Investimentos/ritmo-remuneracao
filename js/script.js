@@ -1688,22 +1688,32 @@ async function renderizarEvolucaoTab() {
 
   // Detalhamento por produto: mesma tabela Mês/Receita/Variação, uma por produto,
   // alinhada ao mesmo intervalo de meses (mês sem venda daquele produto conta como R$0).
+  // Cada produto vem recolhido por padrão — clica no nome do produto pra expandir.
   const produtosOrdenados = [...produtosPresentes].sort();
   const detalhamentoEl = document.getElementById("evolucao-detalhamento-produtos");
-  detalhamentoEl.innerHTML = produtosOrdenados.map(produto => {
+  detalhamentoEl.innerHTML = produtosOrdenados.map((produto, idx) => {
     const linhas = competencias.map((competencia, i) => {
       const valor = valoresPorProdutoMes[produto][competencia] || 0;
       const anterior = i > 0 ? (valoresPorProdutoMes[produto][competencias[i - 1]] || 0) : undefined;
       return `<tr><td>${formatarCompetenciaExtenso(competencia)}</td><td>${formatarMoedaColorida(valor)}</td><td>${htmlVariacao(valor, anterior)}</td></tr>`;
     }).join("");
+    const tabelaId = `tabela-produto-evolucao-${idx}`;
     return `
-      <h4>${produto}</h4>
-      <table>
+      <h4 class="produto-evolucao-toggle" onclick="toggleDetalheProduto('${tabelaId}')">▸ ${produto}</h4>
+      <table id="${tabelaId}" class="tabela-produto-evolucao">
         <thead><tr><th>Mês</th><th>Receita</th><th>Variação vs. mês anterior</th></tr></thead>
         <tbody>${linhas}</tbody>
       </table>
     `;
   }).join("");
+}
+
+function toggleDetalheProduto(tabelaId) {
+  const tabela = document.getElementById(tabelaId);
+  if (!tabela) return;
+  const expandido = tabela.classList.toggle("ativo");
+  const titulo = tabela.previousElementSibling;
+  if (titulo) titulo.textContent = titulo.textContent.replace(/^[▸▾]/, expandido ? "▾" : "▸");
 }
 
 function htmlVariacao(valorAtual, valorAnterior) {
