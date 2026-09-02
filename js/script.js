@@ -1491,7 +1491,9 @@ async function salvarConfigPassagem() {
   if ([metro, onibus, vlt, barca, trem].some(v => isNaN(v) || v <= 0)) { alert("Valores de passagem inválidos."); return; }
 
   configPassagem = { metro, onibus, vlt, barca, trem };
-  await promisify(tx("configuracoes", "readwrite").put({ chave: "passagem", metro, onibus, vlt, barca, trem }));
+  // O id precisa ser "passagem" (é o que carregarConfigPassagem busca via .get("passagem")) —
+  // sem isso, o put() do shim grava no doc "undefined" e o valor salvo nunca é recarregado.
+  await promisify(tx("configuracoes", "readwrite").put({ id: "passagem", metro, onibus, vlt, barca, trem }));
   atualizarValorPassagemLabel();
   alert("Valores de passagem salvos!");
   alternarConfigPassagem(); // Esconde o card após salvar
@@ -2118,6 +2120,7 @@ async function exportarBackup() {
     vendas: await promisify(tx("vendas").getAll()),
     usuarios: await promisify(tx("usuarios").getAll()),
     passagens: await promisify(tx("passagens").getAll()),
+    aprovacoes: await promisify(tx("aprovacoes").getAll()),
     configuracoes: await promisify(tx("configuracoes").getAll())
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -2136,7 +2139,7 @@ function importarBackup(event) {
       const backup = JSON.parse(e.target.result);
       if (!confirm("Isso substitui todos os dados atuais. Continuar?")) return;
 
-      for (const nome of ["funcionarios","vendas","usuarios","passagens","configuracoes"]) {
+      for (const nome of ["funcionarios","vendas","usuarios","passagens","aprovacoes","configuracoes"]) {
         await promisify(tx(nome, "readwrite").clear());
       }
       // Mantém o id original de cada documento (via put), preservando as referências
@@ -2146,7 +2149,8 @@ function importarBackup(event) {
       for (const v of backup.vendas || []) { await promisify(tx("vendas","readwrite").put(v)); }
       for (const u of backup.usuarios || []) { await promisify(tx("usuarios","readwrite").put(u)); }
       for (const p of backup.passagens || []) { await promisify(tx("passagens","readwrite").put(p)); }
-      for (const c of backup.configuracoes || []) { await promisify(tx("configuracoes","readwrite").add(c)); }
+      for (const a of backup.aprovacoes || []) { await promisify(tx("aprovacoes","readwrite").put(a)); }
+      for (const c of backup.configuracoes || []) { await promisify(tx("configuracoes","readwrite").put(c)); }
 
       alert("Backup importado! Recarregando...");
       sessionStorage.removeItem("usuarioLogadoId");
@@ -2163,7 +2167,8 @@ const ABAS_DADOS_EXCEL = {
   "Remuneração": "vendas",
   "Passagens": "passagens",
   "Aprovações": "aprovacoes",
-  "Usuários": "usuarios"
+  "Usuários": "usuarios",
+  "Configurações": "configuracoes"
 };
 
 // Calcula o cabeçalho como a união de todas as chaves usadas em qualquer item da
@@ -2179,10 +2184,40 @@ function cabecalhoUniao(lista) {
   return header;
 }
 
+// Uma célula de planilha não guarda array/objeto (ex.: aprovacao.historico,
+// funcionario.passagemRecorrente) — sem isso, json_to_sheet grava "[object Object]"
+// e o dado é perdido. Serializa como JSON string na exportação e faz o caminho
+// inverso na importação (só em campos que realmente vieram como JSON).
+function serializarParaExcel(lista) {
+  return lista.map(item => {
+    const novo = {};
+    for (const chave in item) {
+      const valor = item[chave];
+      novo[chave] = (valor !== null && typeof valor === "object") ? JSON.stringify(valor) : valor;
+    }
+    return novo;
+  });
+}
+
+function desserializarDoExcel(lista) {
+  return lista.map(item => {
+    const novo = {};
+    for (const chave in item) {
+      const valor = item[chave];
+      if (typeof valor === "string" && (valor.startsWith("{") || valor.startsWith("["))) {
+        try { novo[chave] = JSON.parse(valor); } catch { novo[chave] = valor; }
+      } else {
+        novo[chave] = valor;
+      }
+    }
+    return novo;
+  });
+}
+
 async function exportarDadosExcel() {
   const wb = XLSX.utils.book_new();
   for (const nomeAba in ABAS_DADOS_EXCEL) {
-    const lista = await promisify(tx(ABAS_DADOS_EXCEL[nomeAba]).getAll());
+    const lista = serializarParaExcel(await promisify(tx(ABAS_DADOS_EXCEL[nomeAba]).getAll()));
     const sheet = XLSX.utils.json_to_sheet(lista, { header: cabecalhoUniao(lista) });
     XLSX.utils.book_append_sheet(wb, sheet, nomeAba);
   }
@@ -2202,10 +2237,10 @@ async function importarDadosExcel(event) {
       const registrosPorColecao = {};
       for (const nomeAba in ABAS_DADOS_EXCEL) {
         const sheet = workbook.Sheets[nomeAba];
-        registrosPorColecao[ABAS_DADOS_EXCEL[nomeAba]] = sheet ? XLSX.utils.sheet_to_json(sheet) : [];
+        registrosPorColecao[ABAS_DADOS_EXCEL[nomeAba]] = sheet ? desserializarDoExcel(XLSX.utils.sheet_to_json(sheet)) : [];
       }
 
-      if (!confirm("Isso substitui todos os dados atuais (Equipe, Remuneração, Passagens, Aprovações e Usuários) pelos do arquivo. Continuar?")) {
+      if (!confirm("Isso substitui todos os dados atuais (Equipe, Remuneração, Passagens, Aprovações, Usuários e Configurações) pelos do arquivo. Continuar?")) {
         event.target.value = "";
         return;
       }
