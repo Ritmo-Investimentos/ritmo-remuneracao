@@ -560,6 +560,7 @@ async function calcularRemuneracaoMensal(funcionario, competencia, todasVendas, 
   return {
     totalAssessorMes,
     totalVariavelMes: totalVariavelBruto,
+    baseRemuneracao, // igual a totalAssessorMes, mas sem a passagem somada por cima
     aplicouPiso,
     vendasCalculadas,
     passagensCalculadas
@@ -1638,10 +1639,21 @@ async function renderizarEvolucaoTab() {
   semDadosEl.style.display = "none";
   contentEl.style.display = "block";
 
+  // Passagem é reembolso, não receita de produto — os gráficos/tabelas usam
+  // baseRemuneracao (comissão variável, com piso quando aplicável), sem a
+  // passagem somada por cima.
   const serie = [];
+  const produtosPresentes = new Set();
+  const valoresPorProdutoMes = {}; // produto -> { competencia: valor }
   for (const competencia of competencias) {
-    const { totalAssessorMes } = await calcularRemuneracaoMensal(funcionario, competencia, todasVendas, todasPassagens);
-    serie.push({ competencia, valor: totalAssessorMes });
+    const { baseRemuneracao, vendasCalculadas } = await calcularRemuneracaoMensal(funcionario, competencia, todasVendas, todasPassagens);
+    serie.push({ competencia, valor: baseRemuneracao });
+
+    for (const venda of vendasCalculadas) {
+      produtosPresentes.add(venda.produto);
+      if (!valoresPorProdutoMes[venda.produto]) valoresPorProdutoMes[venda.produto] = {};
+      valoresPorProdutoMes[venda.produto][competencia] = (valoresPorProdutoMes[venda.produto][competencia] || 0) + venda.valorLiquido;
+    }
   }
 
   const ctx = document.getElementById("grafico-evolucao-receitas").getContext("2d");
@@ -1671,12 +1683,33 @@ async function renderizarEvolucaoTab() {
   const corpoTabela = document.getElementById("tabela-variacao-evolucao-body");
   corpoTabela.innerHTML = serie.map((s, i) => {
     const anterior = i > 0 ? serie[i - 1].valor : undefined;
-    const variacao = calcularVariacaoPercentual(s.valor, anterior);
-    const variacaoHtml = variacao === null
-      ? '—'
-      : `<span class="${variacao >= 0 ? 'valor-positivo' : 'valor-negativo'}">${variacao >= 0 ? '+' : ''}${formatarBR(variacao)}%</span>`;
-    return `<tr><td>${formatarCompetenciaExtenso(s.competencia)}</td><td>${formatarMoedaColorida(s.valor)}</td><td>${variacaoHtml}</td></tr>`;
+    return `<tr><td>${formatarCompetenciaExtenso(s.competencia)}</td><td>${formatarMoedaColorida(s.valor)}</td><td>${htmlVariacao(s.valor, anterior)}</td></tr>`;
   }).join("");
+
+  // Detalhamento por produto: mesma tabela Mês/Receita/Variação, uma por produto,
+  // alinhada ao mesmo intervalo de meses (mês sem venda daquele produto conta como R$0).
+  const produtosOrdenados = [...produtosPresentes].sort();
+  const detalhamentoEl = document.getElementById("evolucao-detalhamento-produtos");
+  detalhamentoEl.innerHTML = produtosOrdenados.map(produto => {
+    const linhas = competencias.map((competencia, i) => {
+      const valor = valoresPorProdutoMes[produto][competencia] || 0;
+      const anterior = i > 0 ? (valoresPorProdutoMes[produto][competencias[i - 1]] || 0) : undefined;
+      return `<tr><td>${formatarCompetenciaExtenso(competencia)}</td><td>${formatarMoedaColorida(valor)}</td><td>${htmlVariacao(valor, anterior)}</td></tr>`;
+    }).join("");
+    return `
+      <h4>${produto}</h4>
+      <table>
+        <thead><tr><th>Mês</th><th>Receita</th><th>Variação vs. mês anterior</th></tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    `;
+  }).join("");
+}
+
+function htmlVariacao(valorAtual, valorAnterior) {
+  const variacao = calcularVariacaoPercentual(valorAtual, valorAnterior);
+  if (variacao === null) return '—';
+  return `<span class="${variacao >= 0 ? 'valor-positivo' : 'valor-negativo'}">${variacao >= 0 ? '+' : ''}${formatarBR(variacao)}%</span>`;
 }
 
 // ===================== EQUIPE =====================

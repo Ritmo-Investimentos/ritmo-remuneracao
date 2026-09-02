@@ -37,6 +37,7 @@ body { margin:0; font-family:'Segoe UI', Arial, sans-serif; background:var(--bg)
 .card { background:var(--card-bg); border-radius:12px; padding:20px 24px; box-shadow:0 2px 10px rgba(30,27,46,0.06); margin-bottom:20px; border-top:3px solid var(--primary); }
 .card h2 { margin-top:0; color:var(--primary-dark); font-size:1.15rem; border-bottom:2px solid var(--border); padding-bottom:8px; }
 .card h3 { color:var(--primary-dark); font-size:0.95rem; margin:16px 0 4px; }
+.card h4 { color:var(--primary-dark); font-size:0.85rem; margin:14px 0 2px; }
 table { width:100%; border-collapse:collapse; margin-top:12px; }
 .grafico-evolucao-container { position:relative; height:360px; margin-bottom:10px; }
 th, td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--border); font-size:0.85rem; }
