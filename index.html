@@ -20,8 +20,8 @@
       <h1>Gestão de Remuneração</h1>
     </div>
     <p class="instrucao">Entre com seu usuário e senha</p>
-    <input type="text" id="input-login" placeholder="Usuário">
-    <input type="password" id="input-senha" placeholder="Senha">
+    <input type="text" id="input-login" placeholder="Usuário" onkeydown="if(event.key==='Enter') fazerLogin()">
+    <input type="password" id="input-senha" placeholder="Senha" onkeydown="if(event.key==='Enter') fazerLogin()">
     <button onclick="fazerLogin()">Entrar</button>
     <p class="erro" id="erro-login"></p>
   </div>
